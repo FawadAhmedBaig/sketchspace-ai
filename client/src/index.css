@@ -1,17 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-teal: #0F6B63;
-  --color-brand-teal-hover: #0b544e;
-  --color-brand-teal-active: #094540;
-  --color-brand-aqua: #4FD1C5;
-  --color-brand-aqua-light: #e6faf7;
-  --color-brand-cream: #FAF9F6;
-  --color-brand-charcoal: #1F2937;
-  --color-brand-charcoal-muted: #4B5563;
-  --color-brand-charcoal-light: #9CA3AF;
-  --color-brand-border: #E5E7EB;
-  --color-brand-surface: #FFFFFF;
+  --color-teal: #0F6B63;
+  --color-teal-dark: #0A4A45;
+  --color-teal-light: #16857B;
+  --color-teal-surface: #E7F4F2;
+  
+  --color-aqua: #4FD1C5;
+  --color-aqua-soft: #E6FAF8;
+  --color-aqua-hover: #38B2AC;
+  
+  --color-cream: #FAF9F6;
+  --color-cream-card: #FFFFFF;
+  --color-cream-subtle: #F4F2EB;
+  
+  --color-charcoal: #1F2937;
+  --color-charcoal-muted: #4B5563;
+  --color-charcoal-light: #6B7280;
+  --color-charcoal-border: #E5E7EB;
+
+  --shadow-soft: 0 4px 20px -2px rgba(15, 107, 99, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 10px 30px -4px rgba(31, 41, 55, 0.06), 0 4px 10px -2px rgba(0, 0, 0, 0.03);
+  --shadow-handle: 0 4px 14px rgba(15, 107, 99, 0.35);
 }
 
 body {
@@ -23,21 +33,40 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom subtle scrollbar styling */
+/* Comparison Slider Range Overlay */
+.slider-range {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 30;
+  margin: 0;
+}
+
+/* Smooth pulse ring for active refine */
+@keyframes subtlePulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+.animate-subtle-pulse {
+  animation: subtlePulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Subtle scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: #FAF9F6;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #E5E7EB;
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #4FD1C5;
 }

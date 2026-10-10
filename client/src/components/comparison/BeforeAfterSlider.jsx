@@ -1,28 +1,20 @@
 /**
  * BeforeAfterSlider.jsx
  * 
- * Interactive Before/After Image Comparison Slider.
- * Overlays the AI-generated interior design on top of the original user sketch/photo,
- * with a draggable vertical divider, circular handle, touch/mouse/keyboard controls,
- * and aspect-ratio preservation.
- * 
- * Flutter Developer Note:
- * In Flutter, you would build this with a Stack widget:
- * - Positioned.fill(child: Image(...)) for the base
- * - ClipRect with a CustomClipper or Align(alignment: Alignment.centerRight) for overlay
- * - GestureDetector(onHorizontalDragUpdate: (details) => setState(...))
- * In React, we use standard DOM elements with CSS `clip-path: inset(0 0 0 X%)`
- * and pointer event listeners with `useState` and `useRef`.
+ * Interactive Before/After Comparison section matching the Stitch SketchSpace AI design.
+ * Features:
+ * - Responsive 4:3 / aspect-ratio container with inner shadow
+ * - Background AI generated image with foreground clipped original image
+ * - Circular white drag handle with teal arrows and center divider
+ * - Accessible input range overlay for smooth dragging
+ * - Floating badges: "Original Room" and "AI Generated"
+ * - In-frame "Center 50%" quick reset
+ * - Toolbar beneath with thumbnail presets (Original, 50/50 Split, AI Render)
+ * - Download Image & Save Design actions
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import {
-  ChevronsLeftRight,
-  RotateCcw,
-  Sparkles,
-  Pencil,
-  Image as ImageIcon,
-} from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Download, Check, Sparkles, RotateCcw } from 'lucide-react';
 import { normalizeImageDataUrl } from '../../utils/imageUtils';
 
 export default function BeforeAfterSlider({
@@ -30,270 +22,216 @@ export default function BeforeAfterSlider({
   generatedImage,
   sliderPosition = 50,
   onSliderChange,
-  className = '',
-  roomLabel = '',
+  onDownload,
+  onSave,
+  isDownloading = false,
 }) {
-  const [internalPosition, setInternalPosition] = useState(sliderPosition);
-  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  // Controlled or uncontrolled position support
-  const currentPosition = onSliderChange ? sliderPosition : internalPosition;
-
-  const updatePosition = useCallback(
-    (newPos) => {
-      const clamped = Math.max(0, Math.min(100, Math.round(newPos * 10) / 10));
-      if (onSliderChange) {
-        onSliderChange(clamped);
-      } else {
-        setInternalPosition(clamped);
-      }
-    },
-    [onSliderChange]
-  );
-
-  // Calculate percentage from pointer event relative to container
-  const handlePointerMove = useCallback(
-    (e) => {
-      if (!isDragging || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      if (rect.width === 0) return;
-      const clientX = e.clientX;
-      const offset = clientX - rect.left;
-      const percent = (offset / rect.width) * 100;
-      updatePosition(percent);
-    },
-    [isDragging, updatePosition]
-  );
-
-  const handlePointerDown = (e) => {
-    setIsDragging(true);
-    if (e.target.setPointerCapture) {
-      try {
-        e.target.setPointerCapture(e.pointerId);
-      } catch (err) {
-        // Fallback for browsers that don't support pointer capture on specific target
+  // Sync frame width for original clipped image sizing
+  useEffect(() => {
+    function measureWidth() {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
       }
     }
-    // Also jump immediately to click position
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const percent = ((e.clientX - rect.left) / rect.width) * 100;
-      updatePosition(percent);
-    }
+    measureWidth();
+    window.addEventListener('resize', measureWidth);
+    return () => window.removeEventListener('resize', measureWidth);
+  }, []);
+
+  const originalSrc = normalizeImageDataUrl(originalImage) || '/stitch/original-room.jpg';
+  const generatedSrc = normalizeImageDataUrl(generatedImage) || '/stitch/ai-generated-room.jpg';
+
+  const handleRangeChange = (e) => {
+    onSliderChange?.(Number(e.target.value));
   };
 
-  const handlePointerUp = (e) => {
-    setIsDragging(false);
-    if (e.target.releasePointerCapture) {
-      try {
-        e.target.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // Ignore
-      }
-    }
+  const handleSetPreset = (val) => {
+    onSliderChange?.(val);
   };
-
-  // Keyboard navigation for accessibility
-  const handleKeyDown = (e) => {
-    const step = e.shiftKey ? 10 : 2;
-    if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      updatePosition(currentPosition - step);
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      updatePosition(currentPosition + step);
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      updatePosition(0);
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      updatePosition(100);
-    } else if (e.key === 'r' || e.key === 'R' || e.key === ' ') {
-      e.preventDefault();
-      updatePosition(50);
-    }
-  };
-
-  const originalSrc = normalizeImageDataUrl(originalImage);
-  const generatedSrc = normalizeImageDataUrl(generatedImage);
-
-  // If both images are missing
-  if (!originalSrc && !generatedSrc) {
-    return (
-      <div className="w-full aspect-16/10 min-h-[360px] max-h-[580px] rounded-2xl border-2 border-dashed border-[#E5E7EB] bg-white flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-14 h-14 rounded-full bg-[#FAF9F6] border border-[#E5E7EB] flex items-center justify-center mb-3 text-[#0F6B63]">
-          <ImageIcon className="w-7 h-7" />
-        </div>
-        <h3 className="text-base font-semibold text-[#1F2937]">No Design Loaded</h3>
-        <p className="text-xs text-[#4B5563] mt-1 max-w-sm">
-          Please upload a room layout sketch or generate a design to preview comparison.
-        </p>
-      </div>
-    );
-  }
 
   return (
-    <div className={`relative flex flex-col w-full ${className}`}>
-      {/* Main Comparison Container */}
+    <section className="bg-white rounded-2xl p-2.5 sm:p-4 shadow-card border border-charcoal-border/80 flex flex-col gap-3">
+      {/* Comparison Container Frame */}
       <div
         ref={containerRef}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        className="relative w-full aspect-16/10 min-h-[380px] max-h-[620px] rounded-2xl overflow-hidden shadow-sm border border-[#E5E7EB] bg-[#FAF9F6] select-none touch-none cursor-ew-resize group"
+        id="comparisonFrame"
+        className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-charcoal/5 select-none shadow-inner group"
       >
-        {/* BASE LAYER: Original user sketch/photo */}
-        {originalSrc ? (
+        {/* Background Layer: AI Generated Design */}
+        <img
+          id="aiGeneratedImage"
+          src={generatedSrc}
+          alt="SketchSpace AI Generated Modern Interior Redesign"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+          loading="eager"
+        />
+
+        {/* Foreground Layer (Clipped): Original Room Image */}
+        <div
+          id="originalClipContainer"
+          className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none select-none transition-none"
+          style={{ width: `${sliderPosition}%` }}
+        >
           <img
+            id="originalImage"
             src={originalSrc}
-            alt="Original layout sketch"
-            className="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
+            alt="Original Living Room Photo"
+            className="absolute top-0 left-0 h-full max-w-none object-cover pointer-events-none select-none"
+            style={{ width: containerWidth ? `${containerWidth}px` : '100%' }}
             loading="eager"
-            draggable="false"
           />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400 text-xs">
-            Original image missing
-          </div>
-        )}
+        </div>
 
-        {/* OVERLAY LAYER: AI-Generated interior design clipped to right side */}
-        {generatedSrc ? (
-          <div
-            style={{
-              clipPath: `inset(0 0 0 ${currentPosition}%)`,
-              WebkitClipPath: `inset(0 0 0 ${currentPosition}%)`,
-            }}
-            className="absolute inset-0 w-full h-full pointer-events-none select-none transition-none"
-          >
-            <img
-              src={generatedSrc}
-              alt="AI-generated photorealistic interior"
-              className="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
-              loading="eager"
-              draggable="false"
-            />
-          </div>
-        ) : (
-          <div
-            style={{
-              clipPath: `inset(0 0 0 ${currentPosition}%)`,
-              WebkitClipPath: `inset(0 0 0 ${currentPosition}%)`,
-            }}
-            className="absolute inset-0 bg-[#0F6B63]/10 backdrop-blur-xs flex items-center justify-center text-xs text-[#0F6B63] font-medium"
-          >
-            AI Render Pending...
-          </div>
-        )}
-
-        {/* LABELS: Original vs AI Generated */}
-        <div className="absolute top-4 left-4 z-10 pointer-events-none">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-[#E5E7EB]/80 text-[#1F2937] text-xs font-semibold shadow-2xs">
-            <Pencil className="w-3 h-3 text-[#0F6B63]" />
-            <span>Original Sketch</span>
+        {/* Floating Label: Original Room (Top Left) */}
+        <div className="absolute top-3 left-3 z-20 pointer-events-none">
+          <div className="inline-flex items-center gap-1.5 bg-charcoal/85 backdrop-blur-md text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-md ring-1 ring-white/10">
+            <span className="w-1.5 h-1.5 rounded-full bg-white/70"></span>
+            <span>Original Room</span>
           </div>
         </div>
 
-        <div className="absolute top-4 right-4 z-10 pointer-events-none">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0F6B63]/90 backdrop-blur-md border border-[#4FD1C5]/30 text-white text-xs font-semibold shadow-2xs">
-            <Sparkles className="w-3 h-3 text-[#4FD1C5]" />
+        {/* Floating Label: AI Generated (Top Right) */}
+        <div className="absolute top-3 right-3 z-20 pointer-events-none">
+          <div className="inline-flex items-center gap-1.5 bg-teal/90 backdrop-blur-md text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-md ring-1 ring-aqua/40">
+            <Sparkles className="w-3.5 h-3.5 text-aqua fill-aqua" />
             <span>AI Generated</span>
           </div>
         </div>
 
-        {/* DIVIDER VERTICAL LINE */}
+        {/* Vertical Divider & Circular Drag Handle */}
         <div
-          style={{ left: `${currentPosition}%` }}
-          className="absolute top-0 bottom-0 w-0.75 -ml-px bg-white shadow-[0_0_8px_rgba(0,0,0,0.35)] z-20 pointer-events-none"
-        />
-
-        {/* DRAGGABLE CIRCULAR HANDLE */}
-        <div
-          role="slider"
-          aria-label="Before and after comparison slider"
-          aria-valuenow={Math.round(currentPosition)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          tabIndex={0}
-          style={{ left: `${currentPosition}%`, top: '50%' }}
-          onPointerDown={handlePointerDown}
-          onKeyDown={handleKeyDown}
-          className={`
-            absolute -translate-x-1/2 -translate-y-1/2 z-30
-            w-10 h-10 rounded-full
-            bg-[#0F6B63] text-white
-            border-2 border-white
-            shadow-md flex items-center justify-center
-            cursor-ew-resize select-none
-            transition-transform duration-100
-            ${isDragging ? 'scale-110 ring-4 ring-[#4FD1C5]/60 bg-[#0b544e]' : 'hover:scale-105 hover:bg-[#0b544e]'}
-            focus:outline-none focus:ring-4 focus:ring-[#4FD1C5]
-          `}
+          id="sliderDivider"
+          className="absolute inset-y-0 z-20 pointer-events-none flex items-center justify-center -translate-x-1/2 transition-none"
+          style={{ left: `${sliderPosition}%` }}
         >
-          <ChevronsLeftRight className="w-5 h-5 text-white stroke-[2.2]" />
+          {/* Vertical white divider line with shadow */}
+          <div className="w-0.5 h-full bg-white shadow-[0_0_8px_rgba(0,0,0,0.4)]" />
+
+          {/* Circular handle */}
+          <div className="absolute w-10 h-10 rounded-full bg-white text-teal flex items-center justify-center shadow-handle border-2 border-teal transition-transform group-hover:scale-105">
+            <svg className="w-5 h-5 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
+            </svg>
+          </div>
         </div>
 
-        {/* Quick Click-to-slide overlay */}
-        <div
-          onPointerDown={handlePointerDown}
-          className="absolute inset-0 z-10 opacity-0 cursor-ew-resize"
-          title="Drag or click to compare"
+        {/* Accessible Range Slider Overlay */}
+        <input
+          id="splitRangeInput"
+          type="range"
+          min="0"
+          max="100"
+          value={sliderPosition}
+          onChange={handleRangeChange}
+          aria-label="Before and after split slider"
+          className="slider-range"
         />
+
+        {/* In-Frame Quick 50% Reset floating button */}
+        <button
+          type="button"
+          onClick={() => handleSetPreset(50)}
+          title="Reset split to center (50%)"
+          className="absolute bottom-3 right-3 z-25 bg-white/90 hover:bg-white text-charcoal hover:text-teal p-1.5 rounded-lg shadow-sm backdrop-blur-xs text-xs font-semibold flex items-center gap-1 border border-charcoal-border/70 transition-all hover:scale-105 cursor-pointer"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-teal" />
+          <span className="hidden sm:inline text-[11px]">Center 50%</span>
+        </button>
       </div>
 
-      {/* FOOTER CONTROLS & PRESET BUTTONS */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1 text-xs">
-        <div className="flex items-center gap-2 text-[#4B5563]">
-          <span className="font-medium text-[#1F2937]">Comparison View:</span>
-          <span className="tabular-nums font-mono text-[#0F6B63] font-semibold">
-            {Math.round(currentPosition)}%
-          </span>
-          {roomLabel && (
-            <span className="text-gray-400 hidden sm:inline">• {roomLabel}</span>
+      {/* Toolbar Beneath Comparison Frame */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+        {/* Left: Presets Pill */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-cream p-1 rounded-lg border border-charcoal-border/70">
+            {/* Original preset */}
+            <button
+              type="button"
+              id="presetBtnOriginal"
+              onClick={() => handleSetPreset(100)}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                sliderPosition === 100
+                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+              }`}
+            >
+              <img
+                src={originalSrc}
+                className="w-4 h-4 rounded object-cover border border-charcoal-border"
+                alt="Thumb original"
+              />
+              <span>Original</span>
+            </button>
+
+            {/* 50 / 50 Split preset */}
+            <button
+              type="button"
+              id="presetBtnSplit"
+              onClick={() => handleSetPreset(50)}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                sliderPosition === 50
+                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
+              </svg>
+              <span>50 / 50 Split</span>
+            </button>
+
+            {/* AI Render preset */}
+            <button
+              type="button"
+              id="presetBtnAI"
+              onClick={() => handleSetPreset(0)}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                sliderPosition === 0
+                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+              }`}
+            >
+              <img
+                src={generatedSrc}
+                className="w-4 h-4 rounded object-cover border border-teal/40"
+                alt="Thumb AI render"
+              />
+              <span>AI Render</span>
+            </button>
+          </div>
+
+          <span className="text-charcoal-light hidden sm:inline">• Drag slider or tap presets</span>
+        </div>
+
+        {/* Right: Download & Save Actions */}
+        <div className="flex items-center gap-2 ml-auto">
+          {onDownload && (
+            <button
+              type="button"
+              onClick={onDownload}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-charcoal-border bg-white text-charcoal hover:bg-cream-subtle hover:text-teal font-semibold transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5 text-charcoal-muted" />
+              <span>{isDownloading ? 'Downloading...' : 'Download Image'}</span>
+            </button>
+          )}
+
+          {onSave && (
+            <button
+              type="button"
+              onClick={onSave}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal text-white hover:bg-teal-dark font-semibold transition-colors shadow-sm cursor-pointer active:scale-98"
+            >
+              <Check className="w-3.5 h-3.5 text-aqua" />
+              <span>Save Design</span>
+            </button>
           )}
         </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => updatePosition(100)}
-            className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-              currentPosition === 100
-                ? 'bg-[#0F6B63] text-white border-[#0F6B63] font-medium'
-                : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:bg-gray-50'
-            }`}
-          >
-            Original
-          </button>
-
-          <button
-            type="button"
-            onClick={() => updatePosition(50)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-              currentPosition === 50
-                ? 'bg-[#0F6B63] text-white border-[#0F6B63] font-medium'
-                : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:bg-gray-50'
-            }`}
-            title="Reset slider to 50/50 split"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Split (50%)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => updatePosition(0)}
-            className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-              currentPosition === 0
-                ? 'bg-[#0F6B63] text-white border-[#0F6B63] font-medium'
-                : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:bg-gray-50'
-            }`}
-          >
-            AI Render
-          </button>
-        </div>
       </div>
-    </div>
+    </section>
   );
 }

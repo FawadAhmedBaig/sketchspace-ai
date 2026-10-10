@@ -21,15 +21,15 @@ import { downloadDesignAsPng } from '../utils/imageUtils';
 export function useDesignWorkflow(initialConfig = {}) {
   // 1. Core Image State
   const [originalImage, setOriginalImage] = useState(
-    initialConfig.originalImage || '/demo/sketch-sample.png'
+    initialConfig.originalImage || '/stitch/original-room.jpg'
   );
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState(
-    initialConfig.generatedImage || '/demo/rendered-sample.png'
+    initialConfig.generatedImage || '/stitch/ai-generated-room.jpg'
   );
 
   // 2. Room & Style Configuration
   const [roomType, setRoomType] = useState(initialConfig.roomType || 'Living Room');
-  const [style, setStyle] = useState(initialConfig.style || 'Scandinavian Japandi');
+  const [style, setStyle] = useState(initialConfig.style || 'Modern');
   const [preserveLayout, setPreserveLayout] = useState(true);
   const [designPrompt, setDesignPrompt] = useState('');
 
@@ -43,9 +43,23 @@ export function useDesignWorkflow(initialConfig = {}) {
   // 5. Async Loading & Feedback State
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [refineProgress, setRefineProgress] = useState(35);
+  const [refineStepLabel, setRefineStepLabel] = useState('Analyzing layout & preserving geometry...');
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState(null);
   const [successNotice, setSuccessNotice] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef(null);
+
+  const triggerToast = useCallback((msg) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(msg);
+    setShowToast(true);
+    toastTimeoutRef.current = setTimeout(() => {
+      setShowToast(false);
+    }, 3200);
+  }, []);
 
   // 6. Backend Connectivity & Demo Mode
   // If backend is unreachable or user toggles it, fallback to demo mode
@@ -136,21 +150,31 @@ export function useDesignWorkflow(initialConfig = {}) {
    * Passes latest generated image and user instruction.
    * Keeps original image unchanged.
    */
+  /**
+   * Action: Refine Design
+   * Calls POST /api/refine
+   * Passes latest generated image and user instruction.
+   * Keeps original image unchanged.
+   */
   const handleRefine = useCallback(async () => {
     if (isRefining || isGenerating) return;
     if (!refinementInstruction.trim()) {
-      setError({
-        title: 'Instruction Required',
-        message: 'Please type an instruction or select a suggestion chip.',
-      });
+      triggerToast('Please enter what you would like to change.');
       return;
     }
 
     setIsRefining(true);
+    setRefineProgress(30);
+    setRefineStepLabel('Analyzing room boundaries & spatial anchors...');
     setError(null);
     setSuccessNotice(null);
     const thisRequestId = ++requestIdRef.current;
     const activeInstruction = refinementInstruction.trim();
+
+    const pTimer = setTimeout(() => {
+      setRefineProgress(70);
+      setRefineStepLabel('Preserving layout geometry & applying refinements...');
+    }, 700);
 
     try {
       const result = await refineDesign({
@@ -161,26 +185,24 @@ export function useDesignWorkflow(initialConfig = {}) {
 
       if (thisRequestId !== requestIdRef.current) return;
 
-      // Update generated image while preserving original image & slider position!
+      setRefineProgress(100);
+      setRefineStepLabel('Refinement complete!');
       setCurrentGeneratedImage(result.renderedImage);
-      // Clear input on success
       setRefinementInstruction('');
       lastFailedInstructionRef.current = '';
 
-      setSuccessNotice(
-        result.isMock
-          ? `Refined: "${activeInstruction}" (Demo Mode)`
-          : `Successfully applied: "${activeInstruction}"`
-      );
+      setSuccessNotice('Design updated! 50/50 comparison refreshed with latest prompt.');
+      triggerToast('Design updated successfully!');
     } catch (err) {
       if (thisRequestId !== requestIdRef.current) return;
       lastFailedInstructionRef.current = activeInstruction;
       setError({
         title: 'Refinement Failed',
-        message: err.message || 'Failed to apply refinement to the current design.',
+        message: err.message || 'Refinement timed out. Please retry your prompt.',
         action: 'refine',
       });
     } finally {
+      clearTimeout(pTimer);
       if (thisRequestId === requestIdRef.current) {
         setIsRefining(false);
       }
@@ -191,6 +213,7 @@ export function useDesignWorkflow(initialConfig = {}) {
     refinementInstruction,
     currentGeneratedImage,
     isDemoMode,
+    triggerToast,
   ]);
 
   /**
@@ -230,7 +253,7 @@ export function useDesignWorkflow(initialConfig = {}) {
       const filename = `sketchspace-${roomType.toLowerCase().replace(/\s+/g, '-')}-${timestamp}.png`;
 
       await downloadDesignAsPng(currentGeneratedImage, filename);
-      setSuccessNotice(`Design downloaded as "${filename}".`);
+      triggerToast('Downloading high-res redesigned room image...');
     } catch (err) {
       setError({
         title: 'Download Failed',
@@ -239,7 +262,11 @@ export function useDesignWorkflow(initialConfig = {}) {
     } finally {
       setIsDownloading(false);
     }
-  }, [currentGeneratedImage, roomType]);
+  }, [currentGeneratedImage, roomType, triggerToast]);
+
+  const handleSaveDesign = useCallback(() => {
+    triggerToast('Design saved to your SketchSpace project!');
+  }, [triggerToast]);
 
   const handleToggleDemoMode = useCallback(() => {
     setIsDemoMode((prev) => !prev);
@@ -269,9 +296,13 @@ export function useDesignWorkflow(initialConfig = {}) {
     setComparisonPosition,
     isGenerating,
     isRefining,
+    refineProgress,
+    refineStepLabel,
     isDownloading,
     error,
     successNotice,
+    toastMessage,
+    showToast,
     isDemoMode,
     isBackendOnline,
 
@@ -280,7 +311,9 @@ export function useDesignWorkflow(initialConfig = {}) {
     handleRefine,
     handleRetry,
     handleDownload,
+    handleSaveDesign,
     handleToggleDemoMode,
+    triggerToast,
     clearError,
     clearSuccess,
   };

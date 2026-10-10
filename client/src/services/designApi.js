@@ -239,12 +239,12 @@ export async function exportComparisonCard({
 // Explicitly flagged so mock behavior is NEVER mistaken for live API calls.
 // --------------------------------------------------------------------------
 
-async function simulateDemoGeneration({ roomType, style, prompt }) {
+async function simulateDemoGeneration({ _roomType, _style, _prompt } = {}) {
   // Simulate 1.6s inference latency
   await new Promise((resolve) => setTimeout(resolve, 1600));
 
   return {
-    renderedImage: '/demo/rendered-sample.png',
+    renderedImage: '/stitch/ai-generated-room.jpg',
     detectedAnchors: [
       { label: 'Sofa', bounds: [120, 200, 350, 400] },
       { label: 'Coffee Table', bounds: [220, 250, 300, 350] },
@@ -254,12 +254,12 @@ async function simulateDemoGeneration({ roomType, style, prompt }) {
   };
 }
 
-async function simulateDemoRefinement({ instruction }) {
+async function simulateDemoRefinement({ _instruction } = {}) {
   // Simulate 1.8s inference latency
   await new Promise((resolve) => setTimeout(resolve, 1800));
 
   return {
-    renderedImage: '/demo/refined-sample.png',
+    renderedImage: '/stitch/ai-generated-room.jpg',
     isMock: true,
   };
 }

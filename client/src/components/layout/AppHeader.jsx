@@ -1,165 +1,122 @@
 /**
  * AppHeader.jsx
  * 
- * Top application header for SketchSpace AI.
- * Displays brand identity, room context, mode toggle (Live API vs Demo),
- * "Back to Workspace" navigation, and the mandatory "Download Design" action.
- * 
- * Flutter Developer Note:
- * In Flutter, this is analogous to an AppBar widget with:
- * - leading: IconButton(icon: Icon(Icons.arrow_back), onPressed: onBackToWorkspace)
- * - title: Row(children: [Text('SketchSpace AI'), Chip(...)])
- * - actions: [DownloadButton, ModeSwitch]
+ * Top Navigation Bar matching the Stitch SketchSpace AI screen design.
+ * Features:
+ * - Brand back action & logo
+ * - Center room & style badges
+ * - Quick "Reset 50%" button
+ * - User avatar & subtle API status toggle
  */
 
 import React from 'react';
-import {
-  ArrowLeft,
-  Download,
-  Loader2,
-  Sparkles,
-  Wifi,
-  WifiOff,
-  CheckCircle2,
-} from 'lucide-react';
+import { RotateCcw, Sparkles } from 'lucide-react';
 
 export default function AppHeader({
   roomType = 'Living Room',
   style = 'Modern',
   onBackToWorkspace,
-  onDownloadDesign,
-  isDownloading = false,
-  hasGeneratedDesign = false,
-  isDemoMode = false,
+  onResetSplit,
+  isDemoMode,
   onToggleDemoMode,
-  isBackendOnline = false,
+  isBackendOnline,
 }) {
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] shadow-2xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left: Navigation and Brand */}
-        <div className="flex items-center gap-3 sm:gap-4">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-charcoal-border/70 px-4 sm:px-6 py-3 transition-shadow">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+        {/* Brand & Back Action */}
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {onBackToWorkspace && (
             <button
               type="button"
               onClick={onBackToWorkspace}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#1F2937] hover:text-[#0F6B63] hover:bg-[#FAF9F6] border border-[#E5E7EB] transition-all cursor-pointer"
-              title="Return to canvas workspace"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-charcoal-muted hover:text-teal hover:bg-teal-surface/60 transition-colors cursor-pointer"
+              title="Back to workspace"
             >
-              <ArrowLeft className="w-4 h-4 text-[#0F6B63]" />
-              <span className="hidden sm:inline">Workspace</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
             </button>
           )}
 
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#0F6B63] flex items-center justify-center text-white shadow-2xs">
-              <Sparkles className="w-4 h-4 text-[#4FD1C5]" />
+            <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center text-white font-bold text-sm shadow-sm ring-1 ring-teal/20 shrink-0">
+              <svg className="w-4 h-4 text-aqua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
             </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold tracking-tight text-[#1F2937]">
-                  SketchSpace<span className="text-[#0F6B63]">AI</span>
-                </span>
-                <span className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#4FD1C5]/20 text-[#0F6B63]">
-                  Design & Refine
-                </span>
-              </div>
-              <p className="text-[11px] text-[#4B5563] hidden sm:block">
-                AI Interior Architecture & Layout Studio
-              </p>
+            <div className="leading-tight">
+              <span className="text-sm sm:text-base font-bold tracking-tight text-charcoal">
+                SketchSpace<span className="text-teal ml-0.5">AI</span>
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Current Design Context */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF9F6] border border-[#E5E7EB] text-xs">
-          <span className="font-semibold text-[#1F2937]">{roomType}</span>
-          <span className="text-gray-300">•</span>
-          <span className="text-[#0F6B63] font-medium">{style} Style</span>
-          <span className="text-gray-300">•</span>
-          <span className="text-emerald-700 text-[11px] flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-[#4FD1C5]" />
-            Layout Preserved
-          </span>
+        {/* Center Room Context Badges */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 bg-cream px-2 sm:px-2.5 py-1 rounded-full border border-charcoal-border/80 text-[11px] sm:text-xs font-medium text-charcoal">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
+            <span className="truncate max-w-[80px] sm:max-w-none">{roomType}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-aqua-soft px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold text-teal border border-aqua/30">
+            <Sparkles className="w-3 h-3 text-teal shrink-0" />
+            <span className="truncate max-w-[80px] sm:max-w-none">{style} Style</span>
+          </div>
         </div>
 
-        {/* Right: Actions, API Mode Toggle, and Download */}
-        <div className="flex items-center gap-2.5">
-          {/* Live vs Demo Mode Toggle */}
-          <button
-            type="button"
-            onClick={onToggleDemoMode}
-            className={`
-              inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer
-              ${
-                isDemoMode
-                  ? 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
-                  : isBackendOnline
-                  ? 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
-              }
-            `}
-            title={
-              isDemoMode
-                ? 'Running in Demo Mode with instant mock renders. Click to switch to Live FastAPI backend.'
-                : isBackendOnline
-                ? 'Connected to Live FastAPI backend (http://localhost:8000). Click to switch to Demo Mode.'
-                : 'FastAPI backend is offline. Click to switch to Demo Mode.'
-            }
-          >
-            {isDemoMode ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="hidden sm:inline">Demo Mode</span>
-              </>
-            ) : isBackendOnline ? (
-              <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden sm:inline">Live API</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden sm:inline">API Offline</span>
-              </>
-            )}
-          </button>
+        {/* User Profile & Actions */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {onResetSplit && (
+            <button
+              type="button"
+              onClick={onResetSplit}
+              className="hidden md:flex items-center gap-1 text-xs text-charcoal-muted hover:text-teal font-medium px-2 py-1 rounded transition-colors cursor-pointer"
+              title="Reset comparison to 50%"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset 50%</span>
+            </button>
+          )}
 
-          {/* Mandatory "Download Design" Action */}
-          <button
-            type="button"
-            onClick={onDownloadDesign}
-            disabled={!hasGeneratedDesign || isDownloading}
-            className={`
-              inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold
-              text-white bg-[#0F6B63] hover:bg-[#0b544e] active:bg-[#094540]
-              shadow-2xs transition-all duration-150 cursor-pointer
-              focus:outline-none focus:ring-2 focus:ring-[#4FD1C5]
-              ${
-                !hasGeneratedDesign || isDownloading
-                  ? 'opacity-50 cursor-not-allowed hover:bg-[#0F6B63]'
-                  : 'hover:shadow active:scale-98'
+          {/* Mode Pill Toggle (Demo / Live API) */}
+          {onToggleDemoMode && (
+            <button
+              type="button"
+              onClick={onToggleDemoMode}
+              className={`hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                isDemoMode
+                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : isBackendOnline
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+              }`}
+              title={
+                isDemoMode
+                  ? 'Demo Mode Active. Click to switch to Live Backend.'
+                  : isBackendOnline
+                  ? 'Connected to Live FastAPI backend. Click to switch to Demo Mode.'
+                  : 'FastAPI Offline. Click to toggle.'
               }
-            `}
-            title={
-              hasGeneratedDesign
-                ? 'Download the current photorealistic AI design as a PNG'
-                : 'Generate a design first to download'
-            }
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Exporting PNG...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 text-[#4FD1C5]" />
-                <span>Download Design</span>
-              </>
-            )}
-          </button>
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isDemoMode ? 'bg-amber-500' : isBackendOnline ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
+              <span>{isDemoMode ? 'Demo' : 'Live API'}</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 pl-2 border-l border-charcoal-border">
+            <div
+              className="w-8 h-8 rounded-full bg-teal-surface border border-teal/20 text-teal flex items-center justify-center font-bold text-xs ring-2 ring-white shadow-2xs select-none"
+              title="Logged in as Studio Creator"
+            >
+              SC
+            </div>
+          </div>
         </div>
       </div>
     </header>

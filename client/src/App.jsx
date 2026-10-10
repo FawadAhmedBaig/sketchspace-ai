@@ -11,7 +11,7 @@
 
 import React, { useState } from 'react';
 import DesignAndRefineScreen from './components/design/DesignAndRefineScreen';
-import { Sparkles, ArrowRight, Paintbrush, Layers } from 'lucide-react';
+import { Sparkles, ArrowRight, Paintbrush } from 'lucide-react';
 
 export default function App() {
   // Navigation simulation for development:
