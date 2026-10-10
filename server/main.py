@@ -1,8 +1,9 @@
 import os
 import base64
-import re
+import urllib.parse
 from io import BytesIO
 from typing import List, Optional
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -21,7 +22,6 @@ client = genai.Client(api_key=api_key)
 
 app = FastAPI(title="SketchSpace AI Engine", version="1.0.0")
 
-# Enable CORS for local dev and production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,18 +44,16 @@ class GenerateResponse(BaseModel):
     detected_anchors: List[str]
     rendered_image_base64: str
 
-# ----------------- Helper Functions ----------------- #
+# ----------------- Helpers ----------------- #
 
 def clean_base64(raw_b64: str) -> bytes:
-    """Strip metadata header (data:image/png;base64,) and decode."""
+    """Strips metadata prefix (data:image/png;base64,) and decodes."""
     if "," in raw_b64:
         raw_b64 = raw_b64.split(",")[1]
     return base64.b64decode(raw_b64)
 
 def analyze_layout_with_gemini(image_bytes: bytes) -> List[str]:
-    """Vision pass to extract spatial coordinates from sketch."""
-    pil_img = Image.open(BytesIO(image_bytes))
-    
+    """Vision pass using Gemini 3.8 Flash to extract spatial room anchors."""
     prompt = """
     You are an architectural analysis engine. Analyze this rough room layout sketch.
     Identify the relative spatial locations of key elements:
@@ -66,38 +64,50 @@ def analyze_layout_with_gemini(image_bytes: bytes) -> List[str]:
     (e.g., 'Bed along left wall', 'Window on center back wall', 'Door in bottom right').
     Provide ONLY the bullet points, no commentary.
     """
-    
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[pil_img, prompt]
+            model="gemini-3.8-flash",
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+                prompt
+            ]
         )
         text = response.text or ""
         lines = [line.strip().lstrip("-*• ").strip() for line in text.split("\n") if line.strip()]
         return lines if lines else ["Layout detected: Standard perspective room"]
     except Exception as e:
-        print(f"Vision analysis fallback: {e}")
+        print(f"Vision analysis fallback error: {e}")
         return ["Layout detected: Standard spatial constraints applied"]
 
 def compile_spatial_prompt(room_type: str, style: str, user_prompt: str, anchors: List[str], preserve_layout: bool) -> str:
     spatial_rules = ""
     if preserve_layout and anchors:
-        rules_list = "\n".join([f"- {a}" for a in anchors])
-        spatial_rules = f"""
-        CRITICAL ARCHITECTURAL CONSTRAINTS (PRESERVE EXACT POSITIONS):
-        {rules_list}
-        Do NOT mirror or reposition these elements. Respect the spatial boundaries from the sketch.
-        """
+        rules_list = ", ".join(anchors)
+        spatial_rules = f"Architectural layout constraints: {rules_list}. "
 
-    return f"""
-    Create an ultra-photorealistic, high-end {style} {room_type} interior design photograph.
-    {spatial_rules}
-    Additional design details: {user_prompt if user_prompt else 'Balanced ambient lighting, natural materials, clean aesthetics'}.
-    Styling: Architectural Digest style photography, 8k resolution, realistic daylight through windows, soft shadows.
-    Strictly NO sketches, pencil strokes, blueprints, or split screens in the final output. Only the finished room.
-    """.strip()
+    details = user_prompt if user_prompt else "balanced natural ambient lighting, organic materials"
+    return (
+        f"Ultra-photorealistic 8k architectural photograph of a high-end {style} {room_type}. "
+        f"{spatial_rules}"
+        f"Details: {details}. "
+        f"Interior design photography, daylight streaming in, sharp focus, magazine quality. "
+        f"No drawing, no sketch lines, no blueprints."
+    )
 
-# ----------------- Endpoints ----------------- #
+def generate_photorealistic_interior(prompt: str) -> str:
+    """Free instant diffusion generator for hackathon velocity."""
+    encoded_prompt = urllib.parse.quote(prompt[:1000])
+    # Flux model with photorealistic seed and 4:3 ratio
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&model=flux&nologo=true"
+    
+    res = requests.get(url, timeout=30)
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to synthesize render")
+        
+    b64_str = base64.b64encode(res.content).decode("utf-8")
+    return f"data:image/jpeg;base64,{b64_str}"
+
+# ----------------- Routes ----------------- #
 
 @app.get("/api/health")
 def health():
@@ -109,15 +119,14 @@ async def generate_interior(req: GenerateRequest):
         if not req.image_base64:
             raise HTTPException(status_code=400, detail="Image data is required")
 
-        # 1. Decode incoming sketch
         sketch_bytes = clean_base64(req.image_base64)
 
-        # 2. Extract spatial anchors (Vision pass)
+        # 1. Vision extraction pass via Gemini Flash
         detected_anchors = []
         if req.preserve_layout:
             detected_anchors = analyze_layout_with_gemini(sketch_bytes)
 
-        # 3. Compile prompt
+        # 2. Compile spatial constraint prompt
         final_prompt = compile_spatial_prompt(
             room_type=req.room_type,
             style=req.style,
@@ -126,23 +135,13 @@ async def generate_interior(req: GenerateRequest):
             preserve_layout=req.preserve_layout
         )
 
-        # 4. Generate image using Gemini Image generation
-        result = client.models.generate_images(
-            model='gemini-2.5-flash-image',
-            prompt=final_prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="4:3"
-            )
-        )
-
-        output_bytes = result.generated_images[0].image.image_bytes
-        output_b64 = base64.b64encode(output_bytes).decode("utf-8")
+        # 3. Generate photorealistic render using Pollinations Flux engine
+        img_b64 = generate_photorealistic_interior(final_prompt)
 
         return GenerateResponse(
             status="success",
             detected_anchors=detected_anchors,
-            rendered_image_base64=f"data:image/png;base64,{output_b64}"
+            rendered_image_base64=img_b64
         )
 
     except HTTPException:
