@@ -11,6 +11,9 @@ from PIL import Image
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from routes.presets import router as presets_router
+from routes.refine import router as refine_router
+
 
 load_dotenv()
 
@@ -29,6 +32,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(presets_router)
+app.include_router(refine_router)
 
 # ----------------- Models ----------------- #
 
