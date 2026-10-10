@@ -1,24 +1,51 @@
 /**
  * RefinementPanel.jsx
  * 
- * Refinement Dock matching the Stitch SketchSpace AI screen design.
+ * Refinement Dock with modern, balanced iconography.
  * Features:
- * - Refinement Dock header with Smart Assistant badge
- * - Prompt textarea with attach file & voice prompt buttons
- * - Character count (0 / 250) and active room/style context
- * - Quick suggestion chips (📐 Make the desk larger, ✨ Add warm lighting, 🌿 Add plants, 🪵 Switch to Japandi wood tones)
- * - Dynamic state banner (Idle / Loading with progress / Success / Error with Retry)
- * - Refine Design CTA button
+ * - Subtle inline Wand2 icon on title
+ * - Purposeful Lucide icons for quick suggestion chips (Maximize2, Sun, Leaf, Palette)
+ * - ShieldCheck and status indicators for system state
+ * - Clean Sparkles on the primary Refine Design CTA
  */
 
 import React, { useRef } from 'react';
-import { Paperclip, Mic, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Wand2,
+  Sparkles,
+  Paperclip,
+  Mic,
+  Maximize2,
+  Sun,
+  Leaf,
+  Palette,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 
 const QUICK_CHIPS = [
-  { emoji: '📐', label: 'Make the desk larger', text: 'Make the desk larger and position closer to natural light' },
-  { emoji: '✨', label: 'Add warm lighting', text: 'Add warm ambient cove lighting and soft floor lamps', emojiClass: 'text-amber-500' },
-  { emoji: '🌿', label: 'Add plants', text: 'Add lush indoor olive and fiddle leaf fig plants', emojiClass: 'text-emerald-600' },
-  { emoji: '🪵', label: 'Switch to Japandi wood tones', text: 'Switch to Japandi wood tones with light oak and neutral linens' },
+  {
+    label: 'Make the desk larger',
+    text: 'Make the desk larger and position closer to natural light',
+    icon: Maximize2,
+  },
+  {
+    label: 'Add warm lighting',
+    text: 'Add warm ambient cove lighting and soft floor lamps',
+    icon: Sun,
+  },
+  {
+    label: 'Add plants',
+    text: 'Add lush indoor olive and fiddle leaf fig plants',
+    icon: Leaf,
+  },
+  {
+    label: 'Switch to Japandi wood tones',
+    text: 'Switch to Japandi wood tones with light oak and neutral linens',
+    icon: Palette,
+  },
 ];
 
 export default function RefinementPanel({
@@ -65,23 +92,21 @@ export default function RefinementPanel({
 
   return (
     <section className="bg-white rounded-2xl p-4 sm:p-6 shadow-card border border-charcoal-border/80 flex flex-col gap-4">
-      {/* Header */}
+      {/* Header - Refined inline aesthetic */}
       <div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-teal-surface flex items-center justify-center text-teal shadow-xs">
-              <Sparkles className="w-4 h-4 text-teal fill-teal" />
-            </div>
+            <Wand2 className="w-4 h-4 text-teal shrink-0" />
             <h2 className="text-lg sm:text-xl font-bold text-charcoal">Refinement Dock</h2>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-aqua-soft text-teal border border-aqua/30">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-aqua-soft text-teal border border-aqua/30">
               Smart Assistant
             </span>
           </div>
           <span className="text-xs text-charcoal-light hidden sm:inline">
-            Room layout & geometry locked
+            Room layout &amp; geometry locked
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-charcoal-muted mt-1 ml-9">
+        <p className="text-xs sm:text-sm text-charcoal-muted mt-1">
           Type adjustments or choose prompt quick chips to iterate on this render in real time.
         </p>
       </div>
@@ -138,26 +163,29 @@ export default function RefinementPanel({
           </div>
         </div>
 
-        {/* Quick Suggestion Chips */}
+        {/* Quick Suggestion Chips - Modern Lucide icons */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <span className="text-xs font-semibold text-charcoal-muted shrink-0">Quick chips:</span>
           <div className="flex flex-wrap items-center gap-1.5">
-            {QUICK_CHIPS.map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                onClick={() => handleChipClick(chip.text)}
-                disabled={isRefining}
-                className="chip-btn inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-cream hover:bg-teal-surface hover:text-teal text-charcoal border border-charcoal-border hover:border-teal/30 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-              >
-                <span className={chip.emojiClass || ''}>{chip.emoji}</span>
-                <span>{chip.label}</span>
-              </button>
-            ))}
+            {QUICK_CHIPS.map((chip) => {
+              const Icon = chip.icon;
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => handleChipClick(chip.text)}
+                  disabled={isRefining}
+                  className="chip-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-cream hover:bg-teal-surface hover:text-teal text-charcoal border border-charcoal-border hover:border-teal/30 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Icon className="w-3 h-3 text-teal/80 shrink-0" />
+                  <span>{chip.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Status Banner & Refine Button */}
+        {/* Status Banner & Action CTA */}
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div id="stateBanner" className="flex-1 min-h-[44px] flex items-center">
             {/* Loading State */}
@@ -168,7 +196,7 @@ export default function RefinementPanel({
               >
                 <div className="flex items-center justify-between text-xs text-teal font-medium">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="animate-spin w-3.5 h-3.5 text-teal" />
+                    <Loader2 className="animate-spin w-3.5 h-3.5 text-teal shrink-0" />
                     <span id="loadingStepLabel">{refineStepLabel}</span>
                   </div>
                   <span id="loadingPercentage" className="font-mono text-[11px] font-bold">
@@ -215,9 +243,7 @@ export default function RefinementPanel({
             ) : (
               /* Idle State */
               <div id="stateIdle" className="flex items-center gap-2 text-xs text-charcoal-muted">
-                <svg className="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <ShieldCheck className="w-4 h-4 text-teal/80 shrink-0" />
                 <span>Ready. Wall outlines, architectural doors, and spatial bounds will remain fixed.</span>
               </div>
             )}
@@ -228,14 +254,19 @@ export default function RefinementPanel({
             id="refineSubmitBtn"
             type="submit"
             disabled={isRefining}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal text-white hover:bg-teal-dark font-semibold text-sm shadow-soft transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl bg-teal text-white hover:bg-teal-dark font-semibold text-sm shadow-soft transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
           >
             {isRefining ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                <span>Refining...</span>
+              </>
             ) : (
-              <Sparkles className="w-4 h-4 text-aqua fill-aqua" />
+              <>
+                <Sparkles className="w-4 h-4 text-aqua shrink-0" />
+                <span>Refine Design</span>
+              </>
             )}
-            <span>Refine Design</span>
           </button>
         </div>
       </form>

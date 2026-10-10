@@ -1,16 +1,12 @@
 /**
  * AppHeader.jsx
  * 
- * Top Navigation Bar matching the Stitch SketchSpace AI screen design.
- * Features:
- * - Brand back action & logo
- * - Center room & style badges
- * - Quick "Reset 50%" button
- * - User avatar & subtle API status toggle
+ * Top Navigation Bar with modern, polished Lucide icons.
+ * Subtle, purposeful accents adhering to modern SaaS design systems.
  */
 
 import React from 'react';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, RotateCcw } from 'lucide-react';
 
 export default function AppHeader({
   roomType = 'Living Room',
@@ -33,9 +29,7 @@ export default function AppHeader({
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-charcoal-muted hover:text-teal hover:bg-teal-surface/60 transition-colors cursor-pointer"
               title="Back to workspace"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
+              <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
@@ -75,7 +69,7 @@ export default function AppHeader({
               className="hidden md:flex items-center gap-1 text-xs text-charcoal-muted hover:text-teal font-medium px-2 py-1 rounded transition-colors cursor-pointer"
               title="Reset comparison to 50%"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3 h-3 text-charcoal-light" />
               <span>Reset 50%</span>
             </button>
           )}

@@ -1,20 +1,19 @@
 /**
  * BeforeAfterSlider.jsx
  * 
- * Interactive Before/After Comparison section matching the Stitch SketchSpace AI design.
- * Features:
- * - Responsive 4:3 / aspect-ratio container with inner shadow
- * - Background AI generated image with foreground clipped original image
- * - Circular white drag handle with teal arrows and center divider
- * - Accessible input range overlay for smooth dragging
- * - Floating badges: "Original Room" and "AI Generated"
- * - In-frame "Center 50%" quick reset
- * - Toolbar beneath with thumbnail presets (Original, 50/50 Split, AI Render)
- * - Download Image & Save Design actions
+ * Interactive Before/After Comparison section.
+ * Modern, tasteful Lucide icons for camera/AI labels, split view, and export actions.
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Download, Check, Sparkles, RotateCcw } from 'lucide-react';
+import {
+  Camera,
+  Sparkles,
+  Columns2,
+  Download,
+  Bookmark,
+  RotateCcw,
+} from 'lucide-react';
 import { normalizeImageDataUrl } from '../../utils/imageUtils';
 
 export default function BeforeAfterSlider({
@@ -88,7 +87,7 @@ export default function BeforeAfterSlider({
         {/* Floating Label: Original Room (Top Left) */}
         <div className="absolute top-3 left-3 z-20 pointer-events-none">
           <div className="inline-flex items-center gap-1.5 bg-charcoal/85 backdrop-blur-md text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-md ring-1 ring-white/10">
-            <span className="w-1.5 h-1.5 rounded-full bg-white/70"></span>
+            <Camera className="w-3 h-3 text-white/80 shrink-0" />
             <span>Original Room</span>
           </div>
         </div>
@@ -96,7 +95,7 @@ export default function BeforeAfterSlider({
         {/* Floating Label: AI Generated (Top Right) */}
         <div className="absolute top-3 right-3 z-20 pointer-events-none">
           <div className="inline-flex items-center gap-1.5 bg-teal/90 backdrop-blur-md text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-md ring-1 ring-aqua/40">
-            <Sparkles className="w-3.5 h-3.5 text-aqua fill-aqua" />
+            <Sparkles className="w-3.5 h-3.5 text-aqua shrink-0" />
             <span>AI Generated</span>
           </div>
         </div>
@@ -107,7 +106,7 @@ export default function BeforeAfterSlider({
           className="absolute inset-y-0 z-20 pointer-events-none flex items-center justify-center -translate-x-1/2 transition-none"
           style={{ left: `${sliderPosition}%` }}
         >
-          {/* Vertical white divider line with shadow */}
+          {/* Vertical white divider line */}
           <div className="w-0.5 h-full bg-white shadow-[0_0_8px_rgba(0,0,0,0.4)]" />
 
           {/* Circular handle */}
@@ -171,15 +170,13 @@ export default function BeforeAfterSlider({
               type="button"
               id="presetBtnSplit"
               onClick={() => handleSetPreset(50)}
-              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1 cursor-pointer ${
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                 sliderPosition === 50
                   ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
                   : 'font-medium text-charcoal hover:text-teal hover:bg-white'
               }`}
             >
-              <svg className="w-3.5 h-3.5 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l-4 3 4 3m8-6l4 3-4 3" />
-              </svg>
+              <Columns2 className="w-3.5 h-3.5 text-teal shrink-0" />
               <span>50 / 50 Split</span>
             </button>
 
@@ -215,7 +212,7 @@ export default function BeforeAfterSlider({
               disabled={isDownloading}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-charcoal-border bg-white text-charcoal hover:bg-cream-subtle hover:text-teal font-semibold transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
             >
-              <Download className="w-3.5 h-3.5 text-charcoal-muted" />
+              <Download className="w-3.5 h-3.5 text-charcoal-muted shrink-0" />
               <span>{isDownloading ? 'Downloading...' : 'Download Image'}</span>
             </button>
           )}
@@ -226,7 +223,7 @@ export default function BeforeAfterSlider({
               onClick={onSave}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal text-white hover:bg-teal-dark font-semibold transition-colors shadow-sm cursor-pointer active:scale-98"
             >
-              <Check className="w-3.5 h-3.5 text-aqua" />
+              <Bookmark className="w-3.5 h-3.5 text-aqua shrink-0" />
               <span>Save Design</span>
             </button>
           )}

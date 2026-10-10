@@ -17,7 +17,7 @@ import DesignControls from './DesignControls';
 import BeforeAfterSlider from '../comparison/BeforeAfterSlider';
 import RefinementPanel from '../refinement/RefinementPanel';
 import { useDesignWorkflow } from '../../hooks/useDesignWorkflow';
-import { Check } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function DesignAndRefineScreen({
   initialOriginalImage,
@@ -60,7 +60,7 @@ export default function DesignAndRefineScreen({
 
           {/* Compact Quick Info Pill */}
           <div className="self-start sm:self-auto flex items-center gap-2 text-xs text-charcoal-muted bg-white px-3 py-1.5 rounded-lg border border-charcoal-border shadow-xs">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="font-medium text-charcoal">Layout Preserved</span>
             <span className="text-charcoal-border">•</span>
             <span className="text-teal font-semibold">1/1 Active Concept</span>
@@ -114,7 +114,7 @@ export default function DesignAndRefineScreen({
         }`}
       >
         <div className="bg-charcoal text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 border border-white/10">
-          <Check className="w-4 h-4 text-aqua" />
+          <CheckCircle2 className="w-4 h-4 text-aqua shrink-0" />
           <span>{workflow.toastMessage || 'Design updated successfully!'}</span>
         </div>
       </div>
