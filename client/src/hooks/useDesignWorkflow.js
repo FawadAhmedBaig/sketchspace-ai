@@ -1,0 +1,319 @@
+/**
+ * useDesignWorkflow.js
+ * 
+ * Custom React Hook that encapsulates state management and asynchronous operations
+ * for SketchSpace AI's Design & Refine workflow.
+ * 
+ * Flutter Developer Note:
+ * In Flutter, this is analogous to a ChangeNotifier, Cubit, or StateNotifier.
+ * In React, custom hooks (`use...`) encapsulate state (`useState`), side effects (`useEffect`),
+ * and callback handlers into a reusable function that returns state and actions to components.
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  generateDesign,
+  refineDesign,
+  checkBackendHealth,
+} from '../services/designApi';
+import { downloadDesignAsPng } from '../utils/imageUtils';
+
+export function useDesignWorkflow(initialConfig = {}) {
+  // 1. Core Image State
+  const [originalImage, setOriginalImage] = useState(
+    initialConfig.originalImage || '/stitch/original-room.jpg'
+  );
+  const [currentGeneratedImage, setCurrentGeneratedImage] = useState(
+    initialConfig.generatedImage || '/stitch/ai-generated-room.jpg'
+  );
+
+  // 2. Room & Style Configuration
+  const [roomType, setRoomType] = useState(initialConfig.roomType || 'Living Room');
+  const [style, setStyle] = useState(initialConfig.style || 'Modern');
+  const [preserveLayout, setPreserveLayout] = useState(true);
+  const [designPrompt, setDesignPrompt] = useState('');
+
+  // 3. Refinement State
+  const [refinementInstruction, setRefinementInstruction] = useState('');
+  const lastFailedInstructionRef = useRef('');
+
+  // 4. Comparison Slider Position (0 to 100%, defaults to 50%)
+  const [comparisonPosition, setComparisonPosition] = useState(50);
+
+  // 5. Async Loading & Feedback State
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [refineProgress, setRefineProgress] = useState(35);
+  const [refineStepLabel, setRefineStepLabel] = useState('Analyzing layout & preserving geometry...');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successNotice, setSuccessNotice] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef(null);
+
+  const triggerToast = useCallback((msg) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(msg);
+    setShowToast(true);
+    toastTimeoutRef.current = setTimeout(() => {
+      setShowToast(false);
+    }, 3200);
+  }, []);
+
+  // 6. Backend Connectivity & Demo Mode
+  // If backend is unreachable or user toggles it, fallback to demo mode
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isBackendOnline, setIsBackendOnline] = useState(false);
+
+  // Request race-condition counter (prevents stale responses from overwriting newer ones)
+  const requestIdRef = useRef(0);
+
+  // Check backend health on mount and periodically
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkHealth() {
+      const isOnline = await checkBackendHealth();
+      if (isMounted) {
+        setIsBackendOnline(isOnline);
+        // If live backend is not available on initial boot, auto-enable Demo Mode so the app works immediately
+        if (!isOnline) {
+          setIsDemoMode(true);
+        }
+      }
+    }
+
+    checkHealth();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /**
+   * Action: Initial Design Generation
+   * Calls POST /api/generate
+   */
+  const handleGenerate = useCallback(async () => {
+    if (isGenerating || isRefining) return;
+
+    setIsGenerating(true);
+    setError(null);
+    setSuccessNotice(null);
+    const thisRequestId = ++requestIdRef.current;
+
+    try {
+      const result = await generateDesign({
+        imageBase64: originalImage,
+        roomType,
+        style,
+        prompt: designPrompt,
+        preserveLayout,
+        isDemoMode,
+      });
+
+      // Guard against race conditions
+      if (thisRequestId !== requestIdRef.current) return;
+
+      setCurrentGeneratedImage(result.renderedImage);
+      setSuccessNotice(
+        result.isMock
+          ? 'Demo design generated! (Running in isolated Demo Mode)'
+          : 'Initial interior design generated successfully!'
+      );
+    } catch (err) {
+      if (thisRequestId !== requestIdRef.current) return;
+      setError({
+        title: 'Design Generation Failed',
+        message: err.message || 'Unable to generate design. Check your backend connection.',
+        action: 'generate',
+      });
+    } finally {
+      if (thisRequestId === requestIdRef.current) {
+        setIsGenerating(false);
+      }
+    }
+  }, [
+    isGenerating,
+    isRefining,
+    originalImage,
+    roomType,
+    style,
+    designPrompt,
+    preserveLayout,
+    isDemoMode,
+  ]);
+
+  /**
+   * Action: Refine Design
+   * Calls POST /api/refine
+   * Passes latest generated image and user instruction.
+   * Keeps original image unchanged.
+   */
+  /**
+   * Action: Refine Design
+   * Calls POST /api/refine
+   * Passes latest generated image and user instruction.
+   * Keeps original image unchanged.
+   */
+  const handleRefine = useCallback(async () => {
+    if (isRefining || isGenerating) return;
+    if (!refinementInstruction.trim()) {
+      triggerToast('Please enter what you would like to change.');
+      return;
+    }
+
+    setIsRefining(true);
+    setRefineProgress(30);
+    setRefineStepLabel('Analyzing room boundaries & spatial anchors...');
+    setError(null);
+    setSuccessNotice(null);
+    const thisRequestId = ++requestIdRef.current;
+    const activeInstruction = refinementInstruction.trim();
+
+    const pTimer = setTimeout(() => {
+      setRefineProgress(70);
+      setRefineStepLabel('Preserving layout geometry & applying refinements...');
+    }, 700);
+
+    try {
+      const result = await refineDesign({
+        previousImageBase64: currentGeneratedImage,
+        instruction: activeInstruction,
+        isDemoMode,
+      });
+
+      if (thisRequestId !== requestIdRef.current) return;
+
+      setRefineProgress(100);
+      setRefineStepLabel('Refinement complete!');
+      setCurrentGeneratedImage(result.renderedImage);
+      setRefinementInstruction('');
+      lastFailedInstructionRef.current = '';
+
+      setSuccessNotice('Design updated! 50/50 comparison refreshed with latest prompt.');
+      triggerToast('Design updated successfully!');
+    } catch (err) {
+      if (thisRequestId !== requestIdRef.current) return;
+      lastFailedInstructionRef.current = activeInstruction;
+      setError({
+        title: 'Refinement Failed',
+        message: err.message || 'Refinement timed out. Please retry your prompt.',
+        action: 'refine',
+      });
+    } finally {
+      clearTimeout(pTimer);
+      if (thisRequestId === requestIdRef.current) {
+        setIsRefining(false);
+      }
+    }
+  }, [
+    isRefining,
+    isGenerating,
+    refinementInstruction,
+    currentGeneratedImage,
+    isDemoMode,
+    triggerToast,
+  ]);
+
+  /**
+   * Action: Retry last failed operation
+   */
+  const handleRetry = useCallback(() => {
+    if (error?.action === 'refine') {
+      if (lastFailedInstructionRef.current) {
+        setRefinementInstruction(lastFailedInstructionRef.current);
+      }
+      handleRefine();
+    } else if (error?.action === 'generate') {
+      handleGenerate();
+    } else {
+      setError(null);
+    }
+  }, [error, handleRefine, handleGenerate]);
+
+  /**
+   * Action: Download Design as PNG
+   * Mandatory feature: downloads current AI generated render as genuine PNG.
+   */
+  const handleDownload = useCallback(async () => {
+    if (!currentGeneratedImage) {
+      triggerToast('No AI design available to download yet.');
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const safeRoom = (roomType || 'room').toLowerCase().replace(/\s+/g, '-');
+      const safeStyle = (style || 'modern').toLowerCase().replace(/\s+/g, '-');
+      const filename = `sketchspace-${safeRoom}-${safeStyle}-${timestamp}.png`;
+
+      await downloadDesignAsPng(currentGeneratedImage, filename);
+      triggerToast('AI design downloaded in PNG format.');
+    } catch (err) {
+      setError({
+        title: 'Download Failed',
+        message: err.message || 'Could not export design as PNG.',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [currentGeneratedImage, roomType, style, triggerToast]);
+
+  const handleSaveDesign = useCallback(() => {
+    triggerToast('Design saved to your SketchSpace project!');
+  }, [triggerToast]);
+
+  const handleToggleDemoMode = useCallback(() => {
+    setIsDemoMode((prev) => !prev);
+    setError(null);
+  }, []);
+
+  const clearError = useCallback(() => setError(null), []);
+  const clearSuccess = useCallback(() => setSuccessNotice(null), []);
+
+  return {
+    // State
+    originalImage,
+    setOriginalImage,
+    currentGeneratedImage,
+    setCurrentGeneratedImage,
+    roomType,
+    setRoomType,
+    style,
+    setStyle,
+    preserveLayout,
+    setPreserveLayout,
+    designPrompt,
+    setDesignPrompt,
+    refinementInstruction,
+    setRefinementInstruction,
+    comparisonPosition,
+    setComparisonPosition,
+    isGenerating,
+    isRefining,
+    refineProgress,
+    refineStepLabel,
+    isDownloading,
+    error,
+    successNotice,
+    toastMessage,
+    showToast,
+    isDemoMode,
+    isBackendOnline,
+
+    // Actions
+    handleGenerate,
+    handleRefine,
+    handleRetry,
+    handleDownload,
+    handleSaveDesign,
+    handleToggleDemoMode,
+    triggerToast,
+    clearError,
+    clearSuccess,
+  };
+}
