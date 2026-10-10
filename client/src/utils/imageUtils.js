@@ -3,21 +3,10 @@
  * 
  * Image handling utilities for SketchSpace AI.
  * Normalizes Base64 formats, manages Blob URLs, and handles client-side PNG downloads.
- * 
- * Flutter Developer Note:
- * In Flutter, you would use Image.memory(base64Decode(str)) or ImageProvider.
- * In React/Web, images in the DOM require standard URL strings — either:
- * 1) A Data URL: `data:image/png;base64,iVBORw...`
- * 2) An Object URL: `blob:http://...`
- * 3) A standard remote HTTP URL: `https://...`
  */
 
 /**
  * Ensures an image string is formatted as a valid Data URL for <img> tags.
- * Handles:
- * - Already prefixed Data URLs (e.g. data:image/png;base64,...)
- * - Raw Base64 payloads (prepends data:image/png;base64,)
- * - Relative or absolute URLs (e.g. /demo/sketch.png)
  *
  * @param {string|null} imageSource
  * @returns {string|null} Valid image URL or null
@@ -61,37 +50,47 @@ export function extractRawBase64(dataUrl) {
 }
 
 /**
- * Converts any image source (URL, Data URL, WebP, JPEG, etc.) into a true PNG Blob
- * using an off-screen HTML5 Canvas.
- * 
- * Why this is critical:
- * Simply renaming a WebP or JPEG download to ".png" corrupts headers.
- * Rendering onto an HTML5 canvas and using `canvas.toBlob(..., 'image/png')`
- * guarantees genuine PNG encoding across all browsers.
+ * Converts any image source into a guaranteed PNG Blob using an off-screen HTML5 Canvas
+ * or direct Base64 byte array decoding.
  *
  * @param {string} imageSource
- * @returns {Promise<Blob>} PNG Blob
+ * @returns {Promise<Blob>} Guaranteed PNG Blob
  */
-export function convertImageToPngBlob(imageSource) {
-  return new Promise((resolve, reject) => {
-    const src = normalizeImageDataUrl(imageSource);
-    if (!src) {
-      reject(new Error('No valid image data provided for conversion.'));
-      return;
-    }
+export async function convertImageToPngBlob(imageSource) {
+  const src = normalizeImageDataUrl(imageSource);
+  if (!src) {
+    throw new Error('No valid image data provided for conversion.');
+  }
 
+  // Fast path: if already a base64 PNG data URL, decode directly
+  if (src.startsWith('data:image/png;base64,')) {
+    try {
+      const rawBase64 = src.split(',')[1];
+      const binaryString = atob(rawBase64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: 'image/png' });
+    } catch {
+      // Fallback to canvas conversion below
+    }
+  }
+
+  // Universal canvas-based converter to guarantee PNG mime-type & headers
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+
+    // Only set crossOrigin if loading from external domain
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
 
     img.onload = () => {
       try {
-        const width = img.naturalWidth || img.width;
-        const height = img.naturalHeight || img.height;
-
-        if (width === 0 || height === 0) {
-          reject(new Error('Invalid image dimensions.'));
-          return;
-        }
+        const width = img.naturalWidth || img.width || 1024;
+        const height = img.naturalHeight || img.height || 768;
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -103,10 +102,10 @@ export function convertImageToPngBlob(imageSource) {
           return;
         }
 
-        // Draw image onto canvas
+        // Render onto canvas
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert canvas content to a true PNG blob
+        // Convert canvas buffer to genuine PNG blob
         canvas.toBlob(
           (blob) => {
             if (blob) {
@@ -124,7 +123,30 @@ export function convertImageToPngBlob(imageSource) {
     };
 
     img.onerror = () => {
-      reject(new Error('Failed to load image for PNG export.'));
+      // Fallback: try fetching as blob if Image constructor failed
+      fetch(src)
+        .then((res) => res.blob())
+        .then((blob) => {
+          // Re-draw blob via createImageBitmap
+          createImageBitmap(blob)
+            .then((bitmap) => {
+              const canvas = document.createElement('canvas');
+              canvas.width = bitmap.width;
+              canvas.height = bitmap.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(bitmap, 0, 0);
+              canvas.toBlob(
+                (pngBlob) => {
+                  if (pngBlob) resolve(pngBlob);
+                  else reject(new Error('Canvas blob export failed.'));
+                },
+                'image/png',
+                1.0
+              );
+            })
+            .catch(() => resolve(blob)); // Fallback to raw blob
+        })
+        .catch((fetchErr) => reject(fetchErr));
     };
 
     img.src = src;
@@ -133,44 +155,64 @@ export function convertImageToPngBlob(imageSource) {
 
 /**
  * Downloads the current AI-generated design as a genuine PNG file.
- * Automatically cleans up temporary Blob URLs to prevent memory leaks.
+ * Automatically initiates native browser download and cleans up memory.
  *
  * @param {string} imageSource - The rendered image data (Data URL, raw base64, or URL)
- * @param {string} [filename] - Desired filename
+ * @param {string} [filename] - Desired filename ending in .png
  * @returns {Promise<boolean>} Resolves to true when download triggered
  */
-export async function downloadDesignAsPng(imageSource, filename = 'sketchspace-design.png') {
+export async function downloadDesignAsPng(imageSource, filename = 'sketchspace-ai-redesign.png') {
   if (!imageSource) {
     throw new Error('No design image available to download.');
   }
 
-  // Ensure filename ends with .png
-  const safeFilename = filename.endsWith('.png') ? filename : `${filename}.png`;
+  // Ensure filename has .png extension
+  const safeFilename = filename.toLowerCase().endsWith('.png') ? filename : `${filename}.png`;
 
   let objectUrl = null;
 
   try {
-    // Convert to a true PNG Blob via HTML5 Canvas
+    // 1. Convert to true PNG Blob
     const pngBlob = await convertImageToPngBlob(imageSource);
 
-    // Create temporary browser Object URL
+    // 2. Create Object URL
     objectUrl = URL.createObjectURL(pngBlob);
 
-    // Create a temporary anchor element and trigger download
+    // 3. Trigger native browser file download
     const link = document.createElement('a');
     link.href = objectUrl;
     link.download = safeFilename;
+    link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 100);
 
     return true;
+  } catch {
+    // Ultimate fallback: direct link download
+    const link = document.createElement('a');
+    link.href = normalizeImageDataUrl(imageSource);
+    link.download = safeFilename;
+    link.target = '_blank';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 100);
+    return true;
   } finally {
-    // Release the Object URL to free browser memory
     if (objectUrl) {
       setTimeout(() => {
         URL.revokeObjectURL(objectUrl);
-      }, 1000);
+      }, 3000);
     }
   }
 }

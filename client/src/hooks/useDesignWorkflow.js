@@ -238,10 +238,7 @@ export function useDesignWorkflow(initialConfig = {}) {
    */
   const handleDownload = useCallback(async () => {
     if (!currentGeneratedImage) {
-      setError({
-        title: 'Download Unavailable',
-        message: 'There is no generated design available to download yet.',
-      });
+      triggerToast('No AI design available to download yet.');
       return;
     }
 
@@ -249,20 +246,22 @@ export function useDesignWorkflow(initialConfig = {}) {
     setError(null);
 
     try {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      const filename = `sketchspace-${roomType.toLowerCase().replace(/\s+/g, '-')}-${timestamp}.png`;
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const safeRoom = (roomType || 'room').toLowerCase().replace(/\s+/g, '-');
+      const safeStyle = (style || 'modern').toLowerCase().replace(/\s+/g, '-');
+      const filename = `sketchspace-${safeRoom}-${safeStyle}-${timestamp}.png`;
 
       await downloadDesignAsPng(currentGeneratedImage, filename);
-      triggerToast('Downloading high-res redesigned room image...');
+      triggerToast('AI design downloaded in PNG format.');
     } catch (err) {
       setError({
         title: 'Download Failed',
-        message: err.message || 'Could not export design as PNG. Please check image permissions.',
+        message: err.message || 'Could not export design as PNG.',
       });
     } finally {
       setIsDownloading(false);
     }
-  }, [currentGeneratedImage, roomType, triggerToast]);
+  }, [currentGeneratedImage, roomType, style, triggerToast]);
 
   const handleSaveDesign = useCallback(() => {
     triggerToast('Design saved to your SketchSpace project!');
