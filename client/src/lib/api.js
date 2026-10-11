@@ -2,7 +2,9 @@
  * Backend client for SketchSpace AI (FastAPI, see server/main.py on feat/ai-core-pipeline).
  *
  *   GET  /api/health   -> { status: "ok", service: "..." }
+ *   GET  /api/presets   -> List of available presets
  *   POST /api/generate -> { status: "success", detected_anchors: string[], rendered_image_base64: "data:image/jpeg;base64,..." }
+ *   POST /api/refine   -> { status: "success", rendered_image_base64: "..." }
  *   Errors             -> { detail: string } (400/500) or { detail: [{ loc, msg, type }] } (422)
  *
  * The base URL comes from VITE_API_URL (client/.env). Nothing else hardcodes it.
@@ -96,6 +98,16 @@ export async function checkHealth({ signal } = {}) {
   return data.status === 'ok';
 }
 
+/** GET /api/presets. Returns list of available presets. */
+export async function listPresets({ signal } = {}) {
+  try {
+    const data = await request('/api/presets', { signal, timeoutMs: HEALTH_TIMEOUT_MS });
+    return Array.isArray(data) ? data : (data.presets || []);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * POST /api/generate
  * @param payload  from buildGeneratePayload(): { image_base64, room_type, style, prompt, preserve_layout }
@@ -114,4 +126,22 @@ export async function generateDesign(payload, { signal } = {}) {
 
   const anchors = Array.isArray(data.detected_anchors) ? data.detected_anchors.filter((a) => typeof a === 'string') : [];
   return { anchors, imageDataUrl };
+}
+
+/**
+ * POST /api/refine
+ * @param payload  { previous_image_base64, instruction }
+ * @returns {{ imageDataUrl: string }}
+ */
+export async function refineDesign(payload, { signal } = {}) {
+  const data = await request('/api/refine', { method: 'POST', body: payload, signal, timeoutMs: GENERATE_TIMEOUT_MS });
+
+  let imageDataUrl = data.rendered_image_base64;
+  if (data.status !== 'success' || typeof imageDataUrl !== 'string' || !imageDataUrl) {
+    throw new ApiError('invalid', 'The server did not return a refined image.');
+  }
+  if (!imageDataUrl.startsWith('data:')) imageDataUrl = `data:image/jpeg;base64,${imageDataUrl}`;
+  if (!parseDataUrl(imageDataUrl)) throw new ApiError('invalid', 'The refined image was empty or in an unsupported format.');
+
+  return { imageDataUrl };
 }

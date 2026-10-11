@@ -12,3 +12,68 @@ body {
   outline: 2px solid #0F6B63;
   outline-offset: 2px;
 }
+
+/* Room & Style indicator chips in DesignControls */
+.room-chip,
+.style-chip {
+  background-color: #0F6B63;
+  color: #ffffff;
+  border-color: #0F6B63;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Before / After Comparison Slider – range input overlay
+   Must be invisible but span the full comparison frame
+   so that drag / touch / click changes the split position.
+   ═══════════════════════════════════════════════════════════ */
+.slider-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;           /* invisible – the custom divider is the visual */
+  cursor: ew-resize;
+  z-index: 30;          /* above labels (z-20) and divider */
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: auto; /* MUST be auto so drag / click works */
+}
+
+/* Thumb styling (invisible but physically sized for easier dragging) */
+.slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 40px;
+  height: 100%;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.slider-range::-moz-range-thumb {
+  width: 40px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: ew-resize;
+}
+
+/* Remove default track styling */
+.slider-range::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.slider-range::-moz-range-track {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: ew-resize;
+}
