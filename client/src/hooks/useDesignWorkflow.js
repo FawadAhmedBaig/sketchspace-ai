@@ -17,19 +17,39 @@ import {
   checkBackendHealth,
 } from '../services/designApi';
 import { downloadDesignAsPng } from '../utils/imageUtils';
+import {
+  saveLatestRender,
+  addRefinementHistoryItem,
+  getLatestRender,
+  getCanvasSketch,
+  getDesignMeta,
+} from '../utils/persistence';
 
 export function useDesignWorkflow(initialConfig = {}) {
+  const savedMeta = getDesignMeta() || {};
   // 1. Core Image State
   const [originalImage, setOriginalImage] = useState(
-    initialConfig.originalImage || '/stitch/original-room.jpg'
+    initialConfig.originalImage || getCanvasSketch() || '/stitch/original-room.jpg'
   );
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState(
-    initialConfig.generatedImage || '/stitch/ai-generated-room.jpg'
+    initialConfig.generatedImage || getLatestRender() || '/stitch/ai-generated-room.jpg'
   );
 
   // 2. Room & Style Configuration (read-only, set from initial values)
-  const [roomType, setRoomType] = useState(initialConfig.roomType || 'Living Room');
-  const [style, setStyle] = useState(initialConfig.style || 'Modern');
+  const [roomType, setRoomType] = useState(
+    initialConfig.roomType || savedMeta.roomType || savedMeta.room_type || 'Living Room'
+  );
+  const [style, setStyle] = useState(
+    initialConfig.style || savedMeta.style || 'Modern'
+  );
+
+  useEffect(() => {
+    if (initialConfig.originalImage) setOriginalImage(initialConfig.originalImage);
+  }, [initialConfig.originalImage]);
+
+  useEffect(() => {
+    if (initialConfig.generatedImage) setCurrentGeneratedImage(initialConfig.generatedImage);
+  }, [initialConfig.generatedImage]);
 
   useEffect(() => {
     if (initialConfig.roomType) setRoomType(initialConfig.roomType);
@@ -122,6 +142,7 @@ export function useDesignWorkflow(initialConfig = {}) {
       if (thisRequestId !== requestIdRef.current) return;
 
       setCurrentGeneratedImage(result.renderedImage);
+      saveLatestRender(result.renderedImage);
       setSuccessNotice(
         result.isMock
           ? 'Demo design generated! (Running in isolated Demo Mode)'
@@ -175,9 +196,24 @@ export function useDesignWorkflow(initialConfig = {}) {
       setRefineStepLabel('Preserving layout geometry & applying refinements...');
     }, 700);
 
+    // CRITICAL: Ensure previous_image_base64 is strictly bound to the LATEST GENERATED RENDER
+    // and NEVER the canvas sketch.
+    const canvasSketch = getCanvasSketch() || originalImage;
+    let previousImageBase64 = currentGeneratedImage || getLatestRender();
+
+    console.log('[Refine] Sending previous_image_base64. Is sketch?:', previousImageBase64 === canvasSketch);
+
+    if (previousImageBase64 === canvasSketch) {
+      console.warn('[Refine] previousImageBase64 matched canvasSketch; recovering latest render from localStorage');
+      const recovered = getLatestRender();
+      if (recovered && recovered !== canvasSketch) {
+        previousImageBase64 = recovered;
+      }
+    }
+
     try {
       const result = await refineDesign({
-        previousImageBase64: currentGeneratedImage,
+        previousImageBase64,
         instruction: activeInstruction,
         roomType,
         style,
@@ -188,7 +224,17 @@ export function useDesignWorkflow(initialConfig = {}) {
 
       setRefineProgress(100);
       setRefineStepLabel('Refinement complete!');
-      setCurrentGeneratedImage(result.renderedImage);
+      const newImage = result.renderedImage;
+      setCurrentGeneratedImage(newImage);
+      saveLatestRender(newImage);
+      addRefinementHistoryItem({
+        type: 'refinement',
+        instruction: activeInstruction,
+        image: newImage,
+        roomType,
+        style,
+        timestamp: Date.now(),
+      });
       setRefinementInstruction('');
       lastFailedInstructionRef.current = '';
 

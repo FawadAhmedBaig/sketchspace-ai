@@ -5,6 +5,7 @@ import CanvasToolbar from './CanvasToolbar';
 import ImageUploader from './ImageUploader';
 import PresetPicker from './PresetPicker';
 import { formatImageForBackend, parseDataUrl } from '../lib/exportImage';
+import { getCanvasSketch, saveCanvasSketch, clearSketchSpaceStorage } from '../utils/persistence';
 
 /**
  * SketchWorkspace — canvas + upload + presets, with a slot on the right for the parent's UI.
@@ -18,13 +19,14 @@ import { formatImageForBackend, parseDataUrl } from '../lib/exportImage';
  *  - getImage() => { ok:true, source:'drawing'|'upload', mimeType, dataUrl, base64, imageForBackend, width, height }
  *               |  { ok:false, error:string }
  */
-const SketchWorkspace = forwardRef(function SketchWorkspace({ onImageChange, children }, ref) {
+const SketchWorkspace = forwardRef(function SketchWorkspace({ onImageChange, onReset, children }, ref) {
   const canvasRef = useRef(null);
+  const initialSavedSketch = useRef(getCanvasSketch());
   const [mode, setMode] = useState('draw'); // 'draw' | 'upload'
   const [tool, setTool] = useState('brush');
   const [brushSize, setBrushSize] = useState(6);
   const [canUndo, setCanUndo] = useState(false);
-  const [hasDrawing, setHasDrawing] = useState(false);
+  const [hasDrawing, setHasDrawing] = useState(() => Boolean(initialSavedSketch.current));
   const [revision, setRevision] = useState(0);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState('');
@@ -60,7 +62,34 @@ const SketchWorkspace = forwardRef(function SketchWorkspace({ onImageChange, chi
     };
   }, [mode, upload]);
 
-  useImperativeHandle(ref, () => ({ getImage }), [getImage]);
+  const handleClear = useCallback(() => {
+    canvasRef.current?.clear();
+    setUpload(null);
+    setHasDrawing(false);
+    clearSketchSpaceStorage();
+    setError('');
+    setRevision((r) => r + 1);
+    onReset?.();
+  }, [onReset]);
+
+  useImperativeHandle(ref, () => ({
+    getImage,
+    clearCanvas: handleClear,
+  }), [getImage, handleClear]);
+
+  // Save current sketch to localStorage whenever the canvas or upload changes
+  useEffect(() => {
+    if (mode === 'draw' && hasDrawing && canvasRef.current) {
+      try {
+        const dataUrl = canvasRef.current.toDataURL();
+        saveCanvasSketch(dataUrl);
+      } catch (e) {
+        console.warn('[SketchWorkspace] Could not persist canvas sketch:', e);
+      }
+    } else if (mode === 'upload' && upload?.dataUrl) {
+      saveCanvasSketch(upload.dataUrl);
+    }
+  }, [revision, hasDrawing, mode, upload]);
 
   // Notify the parent whenever the exportable image changes (debounced).
   const onImageChangeRef = useRef(onImageChange);
@@ -136,13 +165,14 @@ const SketchWorkspace = forwardRef(function SketchWorkspace({ onImageChange, chi
             onBrushSizeChange={setBrushSize}
             canUndo={canUndo}
             onUndo={() => canvasRef.current?.undo()}
-            onClear={() => canvasRef.current?.clear()}
+            onClear={handleClear}
           />
           <div className="overflow-hidden rounded-xl border border-stone-300 shadow-inner">
             <DrawingCanvas
               ref={canvasRef}
               tool={tool}
               brushSize={brushSize}
+              initialImage={initialSavedSketch.current}
               onHistoryChange={setCanUndo}
               onChange={({ hasContent }) => {
                 setHasDrawing(hasContent);

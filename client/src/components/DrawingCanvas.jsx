@@ -12,7 +12,7 @@ const INK = '#1F2937';
 const ERASER_MULTIPLIER = 2.5;
 const MAX_HISTORY = 12;
 
-const DrawingCanvas = forwardRef(function DrawingCanvas({ tool, brushSize, onChange, onHistoryChange }, ref) {
+const DrawingCanvas = forwardRef(function DrawingCanvas({ tool, brushSize, onChange, onHistoryChange, initialImage }, ref) {
   const canvasRef = useRef(null);
   const stroke = useRef(null);
   const history = useRef([]);
@@ -45,12 +45,35 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ tool, brushSize, onCha
 
   useEffect(() => {
     paintWhite();
+    if (initialImage) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = ctx2d();
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        pushHistory();
+        notify();
+      };
+      img.src = initialImage;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialImage]);
 
   useImperativeHandle(ref, () => ({
     isBlank,
     toDataURL: () => canvasRef.current.toDataURL('image/png'),
+    loadImage(dataUrl) {
+      if (!dataUrl) return;
+      stroke.current = null;
+      const img = new Image();
+      img.onload = () => {
+        const ctx = ctx2d();
+        paintWhite();
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        pushHistory();
+        notify();
+      };
+      img.src = dataUrl;
+    },
     undo() {
       const snap = history.current.pop();
       if (!snap) return;

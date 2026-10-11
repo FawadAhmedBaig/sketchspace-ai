@@ -1,5 +1,6 @@
 import os
 import base64
+import re
 import urllib.parse
 from io import BytesIO
 from typing import List, Optional
@@ -10,10 +11,6 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-import re
-import urllib.parse
-import base64
-import requests
 from routes.presets import router as presets_router
 from routes.refine import router as refine_router
 
@@ -42,6 +39,7 @@ class GenerateRequest(BaseModel):
     style: str = "Modern Japandi"
     prompt: Optional[str] = ""
     preserve_layout: bool = True
+    is_floor_plan: bool = False  # Flag for preset blueprint / 2D map layouts
 
 class GenerateResponse(BaseModel):
     status: str
@@ -56,15 +54,15 @@ def clean_base64(raw_b64: str) -> bytes:
 
 def analyze_layout_with_gemini(image_bytes: bytes) -> List[str]:
     prompt = """
-    You are an architectural analysis engine. Analyze this rough room layout sketch.
+    You are an architectural analysis engine. Analyze this room layout sketch or floor plan.
     Identify the relative spatial locations of key elements:
     - Walls, doors, windows
-    - Core furniture (bed, desk, couch, wardrobe, etc.)
+    - Core furniture (bed, desk, couch, wardrobe, kitchen fixtures, etc.)
     Return concise bullet points only.
     """
     try:
         response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-2.5-flash",
             contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/png"), prompt]
         )
         text = response.text or ""
@@ -74,27 +72,38 @@ def analyze_layout_with_gemini(image_bytes: bytes) -> List[str]:
         print(f"Gemini Vision warning: {e}")
         return ["Layout detected: Standard spatial constraints applied"]
 
-def compile_spatial_prompt(room_type: str, style: str, user_prompt: str, anchors: List[str], preserve_layout: bool) -> str:
+def compile_spatial_prompt(room_type: str, style: str, user_prompt: str, anchors: List[str], preserve_layout: bool, is_floor_plan: bool = False) -> str:
     spatial_rules = ""
     if preserve_layout and anchors:
         spatial_rules = f"Arrangement: {', '.join(anchors)}. "
     details = user_prompt if user_prompt else "ambient natural sunlight, organic textures"
+
+    if is_floor_plan:
+        return (
+            f"3D top-down isometric cutaway floor plan render of a {style} {room_type}. "
+            f"{spatial_rules}Details: {details}. "
+            f"Miniature model look, clean wooden parquet floors, soft room shadows, 8k resolution."
+        )
+
     return (
         f"Photorealistic 8k architectural photography of a {style} {room_type}. "
         f"{spatial_rules}Details: {details}. "
         f"Sharp focus, magazine quality, clean interior lighting."
     )
 
-def generate_photorealistic_interior(prompt: str, sketch_b64: str) -> tuple[str, str]:
+def generate_photorealistic_interior(prompt: str, sketch_b64: str, is_floor_plan: bool = False) -> tuple[str, str]:
     colab_url = os.getenv("COLAB_BRIDGE_URL", "").strip().rstrip("/")
     
     # 1. Primary: Google Colab ControlNet
     if colab_url:
         try:
-            print(f"[Engine] Triggering Colab ControlNet at: {colab_url}/api/generate")
+            print(f"[Engine] Triggering Colab ControlNet at: {colab_url}/api/generate (is_floor_plan={is_floor_plan})")
             payload = {
                 "image_base64": sketch_b64,
-                "prompt": prompt[:400]
+                "prompt": prompt[:400],
+                "is_refinement": False,
+                "strength": 1.0,
+                "is_floor_plan": is_floor_plan,  # Sent to trigger Path A on Colab
             }
             headers = {
                 "ngrok-skip-browser-warning": "true",
@@ -120,7 +129,6 @@ def generate_photorealistic_interior(prompt: str, sketch_b64: str) -> tuple[str,
     # 2. Resilient Safety Fallback: Pollinations.ai (Free Default Model)
     try:
         print("[Engine] Calling Pollinations fallback...")
-        import re
         safe_prompt = re.sub(r'[^a-zA-Z0-9\s,]', ' ', prompt)
         safe_prompt = " ".join(safe_prompt.split())[:250].strip()
         encoded = urllib.parse.quote(safe_prompt)
@@ -140,6 +148,7 @@ def generate_photorealistic_interior(prompt: str, sketch_b64: str) -> tuple[str,
 
     raise HTTPException(status_code=500, detail="Failed to synthesize render from both engines. Please try again.")
 
+@app.get("/api/health")
 def health():
     return {"status": "ok", "service": "SketchSpace Core Engine"}
 
@@ -159,10 +168,15 @@ async def generate_interior(req: GenerateRequest):
         style=req.style,
         user_prompt=req.prompt,
         anchors=detected_anchors,
-        preserve_layout=req.preserve_layout
+        preserve_layout=req.preserve_layout,
+        is_floor_plan=req.is_floor_plan,
     )
 
-    img_b64, engine_used = generate_photorealistic_interior(final_prompt, req.image_base64)
+    img_b64, engine_used = generate_photorealistic_interior(
+        prompt=final_prompt,
+        sketch_b64=req.image_base64,
+        is_floor_plan=req.is_floor_plan,
+    )
 
     return GenerateResponse(
         status="success",

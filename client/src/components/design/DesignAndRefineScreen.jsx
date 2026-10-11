@@ -25,6 +25,7 @@ export default function DesignAndRefineScreen({
   initialRoomType,
   initialStyle,
   onBackToWorkspace,
+  onNewProject,
 }) {
   const workflow = useDesignWorkflow({
     originalImage: initialOriginalImage,
@@ -40,6 +41,7 @@ export default function DesignAndRefineScreen({
         roomType={workflow.roomType}
         style={workflow.style}
         onBackToWorkspace={onBackToWorkspace}
+        onNewProject={onNewProject}
         onResetSplit={() => {
           workflow.setComparisonPosition(50);
           workflow.triggerToast('Comparison reset to 50% split.');

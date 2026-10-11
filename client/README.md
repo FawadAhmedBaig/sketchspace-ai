@@ -1,85 +1,136 @@
-# SketchSpace AI — Frontend (Canvas & Workspace + backend integration)
+# SketchSpace AI — Frontend Web Application
 
-React 18 + Vite 5 + Tailwind 3 + lucide-react. Plain HTML5 Canvas, no drawing library.
-In the shared repo this whole folder lives at **`/client`**.
+The interactive client interface for **SketchSpace AI**, built with **React 18**, **Vite 5**, **Tailwind CSS**, and **Lucide Icons**. It provides a real-time sketching canvas, blueprint upload suite, before/after comparison slider, and an interactive refinement studio.
 
-## Setup
+---
+
+## Features
+
+- **Interactive Drawing Canvas**: Custom zero-dependency HTML5 canvas supporting freehand drawing, dynamic stroke sizing, eraser, multi-level undo, and touch/stylus inputs.
+- **Architectural Presets**: Instant starter templates (Japandi Bedroom, Nordic Living Room, Industrial Kitchen, Modern Studio Loft) for quick demonstrations.
+- **Blueprint & Sketch Upload**: File dropzone supporting PNG, JPEG, and WebP floor plans with validation and preview.
+- **Interactive Before/After Slider**: Split-screen comparative viewer with mouse and touch dragging to visually inspect how the AI maintained structural boundaries.
+- **Conversational Refinement Dock**: Iteratively refine designs through natural language commands (e.g. *"add a floor lamp beside the sofa"*, *"switch to walnut wood floors"*).
+- **Session Persistence**: Stores canvas sketches, rendered outputs, and refinement history in `localStorage` so work is preserved across browser refreshes.
+
+---
+
+## Directory & File Overview
+
+```
+client/
+├── src/
+│   ├── components/
+│   │   ├── comparison/
+│   │   │   └── BeforeAfterSlider.jsx       # Interactive split-screen comparative slider
+│   │   ├── design/
+│   │   │   ├── DesignAndRefineScreen.jsx   # Primary view for /refine screen
+│   │   │   └── DesignControls.jsx          # Room type and style badge chips
+│   │   ├── feedback/
+│   │   │   ├── ErrorMessage.jsx            # Formatted error banner with retry
+│   │   │   └── LoadingIndicator.jsx        # Animated generation status spinner
+│   │   ├── layout/
+│   │   │   └── AppHeader.jsx               # Top navigation bar with back/new actions
+│   │   ├── refinement/
+│   │   │   └── RefinementPanel.jsx         # Chat dock for iterative prompt edits
+│   │   ├── CanvasToolbar.jsx               # Brush/eraser mode and stroke thickness
+│   │   ├── DrawingCanvas.jsx               # HTML5 2D canvas drawing engine
+│   │   ├── ImageUploader.jsx               # Blueprint/sketch file upload dropzone
+│   │   ├── PresetPicker.jsx                # One-click architectural layout presets
+│   │   └── SketchWorkspace.jsx             # Tabs wrapper combining Canvas & Uploader
+│   ├── demo/
+│   │   └── DemoGeneratePanel.jsx           # Generation controls panel on the main workspace
+│   ├── hooks/
+│   │   ├── useDesignWorkflow.js            # Combined workflow hook for generation + refinement
+│   │   └── useGenerateDesign.js            # Single generation lifecycle hook
+│   ├── lib/
+│   │   ├── api.js                          # Base API client and health checker
+│   │   ├── designApi.js                    # Endpoints for generate, refine, and presets
+│   │   ├── exportImage.js                  # Canvas data URL compilation & resizing
+│   │   ├── presets.js                      # Client-side preset definitions
+│   │   └── upload.js                       # Image file validation & base64 conversion
+│   ├── services/
+│   │   └── designApi.js                    # Alternate service wrapper
+│   ├── utils/
+│   │   ├── imageUtils.js                   # Client-side image formatting utilities
+│   │   └── persistence.js                  # LocalStorage state management
+│   ├── App.jsx                             # Application router (/ and /refine)
+│   ├── index.css                           # Global Tailwind styles & font imports
+│   └── main.jsx                            # React root mount
+├── .env.example                            # Frontend environment configuration template
+├── package.json                            # Scripts & dependencies
+├── tailwind.config.js                      # Tailwind styling configuration
+└── vite.config.js                          # Vite bundler configuration
+```
+
+---
+
+## Getting Started
+
+### 1. Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
+
+### 2. Installation
+
 ```bash
-cp .env.example .env     # .env is gitignored in the shared repo; .env.example is committed
-npm ci                   # uses package-lock.json
-npm run dev              # http://localhost:5173
-npm run build            # production build into dist/
-```
-`.env` (no secrets):
-```
-VITE_API_URL=https://sketchspace-ai.onrender.com
-```
-Vite bakes this in **at build time**: set `VITE_API_URL` in the hosting provider's build environment too, and restart `npm run dev` after editing `.env`. To use a local backend: `VITE_API_URL=http://localhost:8000`.
+# Navigate to the client directory
+cd client
 
-## Files
-| Path | Purpose |
+# Install dependencies
+npm install
+```
+
+### 3. Configure Environment
+
+Copy `.env.example` to create your local `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Set the backend API URL in `.env`:
+```env
+# For local FastAPI backend:
+VITE_API_URL=http://localhost:8000
+
+# For deployed cloud backend (e.g., Render):
+# VITE_API_URL=https://sketchspace-ai.onrender.com
+```
+
+> **Note**: Vite injects `VITE_API_URL` at build/bundle time. If you modify `.env`, restart the development server.
+
+### 4. Running the Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## Available Scripts
+
+| Command | Description |
 |---|---|
-| `src/components/SketchWorkspace.jsx` | Workspace entry point: layout, Draw/Upload tabs, `getImage()` ref API, children slot |
-| `src/components/DrawingCanvas.jsx`, `CanvasToolbar.jsx`, `ImageUploader.jsx`, `PresetPicker.jsx` | Canvas engine, tools, upload, presets (unchanged) |
-| `src/lib/exportImage.js` | The single place that decides the `image_base64` format + `buildGeneratePayload` |
-| `src/lib/api.js` | **New.** `checkHealth()`, `generateDesign()`, `ApiError`, reads `VITE_API_URL` |
-| `src/hooks/useGenerateDesign.js` | **New.** `useGenerateDesign()` (loading / duplicate guard / errors / cancel) and `useBackendStatus()` |
-| `src/demo/DemoGeneratePanel.jsx` | **New, throwaway.** Stand-in for Tayyab's selectors + results. Delete when his panel is ready |
-| `src/App.jsx` | Demo parent (now renders the stand-in panel) |
-| `.env`, `.env.example` | **New.** `VITE_API_URL` |
+| `npm run dev` | Starts Vite dev server with Hot Module Replacement (HMR) at port 5173 |
+| `npm run build` | Builds optimized production bundle into the `dist/` directory |
+| `npm run preview` | Locally serves the production build for testing |
 
-## Backend contract (confirmed from `server/main.py` on `feat/ai-core-pipeline`)
-`GET /api/health` → `{ "status": "ok", "service": "SketchSpace Core Engine" }`
+---
 
-`POST /api/generate` (JSON)
-```json
-{ "image_base64": "data:image/png;base64,...", "room_type": "Bedroom", "style": "Modern Japandi",
-  "prompt": "", "preserve_layout": true }
-```
-Success `200`:
-```json
-{ "status": "success", "detected_anchors": ["Bed along top wall", "..."],
-  "rendered_image_base64": "data:image/jpeg;base64,..." }
-```
-Errors: `{ "detail": "<string>" }` (400/500) or `{ "detail": [{ "loc": [...], "msg": "...", "type": "..." }] }` (422). CORS is `allow_origins=["*"]`.
+## Application Routes
 
-- `image_base64`: backend strips everything up to the first comma, so **both** a full data URL and raw Base64 work. We send the full data URL (one constant in `exportImage.js`).
-- `room_type` / `style` are free text pasted into the prompt, so send readable labels ("Living Room", "Scandinavian"), not `living_room`. Backend defaults: `Bedroom` / `Modern Japandi`.
-- The result is a full JPEG data URL and can be used directly as `<img src>`.
+- **`/` (Workspace Page)**:
+  - Freehand sketch canvas or file uploader.
+  - Room type selection (`Bedroom`, `Living Room`, `Kitchen`, `Bathroom`, `Studio`, `Dining Room`, `Office`).
+  - Style selection (`Modern Japandi`, `Minimalist Scandinavian`, `Industrial Modern`, `Contemporary Luxury`, `Mid-Century Modern`, `Bohemian Chic`, `Warm Minimalist`, `Biophilic Modern`).
+  - Layout preservation toggle.
+  - "Generate Interior" action that navigates to the refinement suite upon completion.
 
-## Integration guide
-**Tayyab** (controls/results): keep the hook, replace the markup.
-```jsx
-import { useGenerateDesign } from './hooks/useGenerateDesign';
-
-const { status, result, error, isLoading, generate, cancel } = useGenerateDesign();
-
-<SketchWorkspace ref={ref}>
-  {({ canExport, getImage }) => (
-    <button disabled={!canExport || isLoading}
-            onClick={() => generate(getImage, { room_type, style, prompt, preserve_layout })}>
-      Generate
-    </button>
-    // result.imageDataUrl -> <img src>, result.anchors -> string[], error.message -> show to the user
-  )}
-</SketchWorkspace>
-```
-`generate()` validates the image (empty canvas / no upload) and the required fields, ignores duplicate clicks while a request is in flight, aborts on unmount, and returns friendly error messages. A request can take up to ~60 s (Gemini + Pollinations) and Render may cold-start, so the client timeout is 120 s. Delete `src/demo/` and the import in `App.jsx` when done. Don't call `fetch` yourself: use `lib/api.js`.
-
-**Fawad** (backend), things the frontend relies on or noticed:
-1. Keep the response shape above; the client rejects anything without a non-empty `rendered_image_base64`.
-2. Keep `/api/health` returning `{"status":"ok"}` (used for the status chip and to wake a sleeping Render instance).
-3. `analyze_layout_with_gemini` always sends `mime_type="image/png"`, but uploaded JPEGs arrive as JPEG. Untested whether Gemini tolerates this; failures are swallowed and silently fall back to generic anchors, which weakens layout preservation. Consider detecting the format with PIL.
-4. `generate_interior` is `async def` but makes blocking `requests`/Gemini calls, so one slow request blocks other requests. A plain `def` route (threadpool) avoids this.
-5. Render free tier sleeps; the first call after idle may take ~50 s.
-
-## Test status
-See the hand-off notes: UI + client logic verified against Fawad's real `main.py` run locally with Gemini/Pollinations stubbed. **The live Render deployment was not reachable from the build sandbox and has not been tested.**
-
-## Manual checklist (canvas, unchanged)
-- [ ] Empty canvas: chip says "Draw or load a preset"; Generate disabled
-- [ ] Brush, eraser, size slider, undo, clear-with-confirm all work; touch/stylus works on a real device
-- [ ] Studio / Square Bedroom / Corner Office presets load instantly and are undoable
-- [ ] Upload: PNG/JPEG/WebP accepted; GIF/PDF/>10 MB/corrupt rejected with a message; preview/replace/remove work
-- [ ] Resize to ~390 px: layout stacks, strokes intact
-- [ ] **Live:** server chip turns "Server online"; Generate returns an image; offline backend shows a readable error
+- **`/refine` (Refinement Studio)**:
+  - Interactive Before & After comparison slider with persistent original sketch and AI render.
+  - Visual display of Gemini-detected spatial anchors.
+  - Conversational refinement chat interface with prompt suggestion pills.
+  - Full-resolution image download and "New Project" reset button.

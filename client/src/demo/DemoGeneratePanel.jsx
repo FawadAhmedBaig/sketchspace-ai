@@ -1,6 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertCircle, ArrowRight, Loader2, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useBackendStatus, useGenerateDesign } from '../hooks/useGenerateDesign';
+import {
+  getDesignMeta,
+  saveDesignMeta,
+  saveCanvasSketch,
+  saveLatestRender,
+  saveRefinementHistory,
+} from '../utils/persistence';
 
 /**
  * STAND-IN for Tayyab's controls + results panel.
@@ -15,22 +22,48 @@ const STYLES = ['Modern Japandi', 'Scandinavian', 'Minimalist', 'Mid-Century Mod
 const field = 'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-brand-teal';
 
 export default function DemoGeneratePanel({ canExport, getImage, onGenerationComplete }) {
-  const [room_type, setRoomType] = useState(ROOM_TYPES[0]);
-  const [style, setStyle] = useState(STYLES[0]);
-  const [prompt, setPrompt] = useState('');
-  const [preserve_layout, setPreserve] = useState(true);
+  const savedMeta = getDesignMeta() || {};
+  const [room_type, setRoomType] = useState(savedMeta.room_type || savedMeta.roomType || ROOM_TYPES[0]);
+  const [style, setStyle] = useState(savedMeta.style || STYLES[0]);
+  const [prompt, setPrompt] = useState(savedMeta.prompt || '');
+  const [preserve_layout, setPreserve] = useState(savedMeta.preserve_layout !== undefined ? savedMeta.preserve_layout : true);
   const { status, result, error, isLoading, generate, cancel } = useGenerateDesign();
   const backend = useBackendStatus();
+
+  // Save metadata to localStorage on change
+  useEffect(() => {
+    saveDesignMeta({ room_type, roomType: room_type, style, prompt, preserve_layout });
+  }, [room_type, style, prompt, preserve_layout]);
 
   const onSubmit = async () => {
     const imageSnapshot = getImage();
     const res = await generate(getImage, { room_type, style, prompt: prompt.trim(), preserve_layout });
     // If generation was successful, navigate to refinement page
     if (res && onGenerationComplete) {
+      const sketchDataUrl = imageSnapshot?.ok ? imageSnapshot.dataUrl : null;
+      saveCanvasSketch(sketchDataUrl);
+      saveLatestRender(res.imageDataUrl);
+      saveDesignMeta({
+        room_type,
+        roomType: room_type,
+        style,
+        prompt: prompt.trim(),
+        preserve_layout,
+        anchors: res.anchors,
+      });
+      saveRefinementHistory([
+        {
+          type: 'initial',
+          instruction: 'Initial design generated from sketch',
+          image: res.imageDataUrl,
+          timestamp: Date.now(),
+        },
+      ]);
       onGenerationComplete(res, {
-        sketchDataUrl: imageSnapshot?.ok ? imageSnapshot.dataUrl : null,
+        sketchDataUrl,
         room_type,
         style,
+        prompt: prompt.trim(),
       });
     }
   };

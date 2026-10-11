@@ -128,17 +128,6 @@ export default function BeforeAfterSlider({
           aria-label="Before and after split slider"
           className="slider-range"
         />
-
-        {/* In-Frame Quick 50% Reset floating button */}
-        <button
-          type="button"
-          onClick={() => handleSetPreset(50)}
-          title="Reset split to center (50%)"
-          className="absolute bottom-3 right-3 z-25 bg-white/90 hover:bg-white text-charcoal hover:text-teal p-1.5 rounded-lg shadow-sm backdrop-blur-xs text-xs font-semibold flex items-center gap-1 border border-charcoal-border/70 transition-all hover:scale-105 cursor-pointer"
-        >
-          <RotateCcw className="w-3.5 h-3.5 text-teal" />
-          <span className="hidden sm:inline text-[11px]">Center 50%</span>
-        </button>
       </div>
 
       {/* Toolbar Beneath Comparison Frame */}
@@ -151,11 +140,10 @@ export default function BeforeAfterSlider({
               type="button"
               id="presetBtnOriginal"
               onClick={() => handleSetPreset(100)}
-              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                sliderPosition === 100
-                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
-                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
-              }`}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${sliderPosition === 100
+                ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+                }`}
             >
               <img
                 src={originalSrc}
@@ -170,11 +158,10 @@ export default function BeforeAfterSlider({
               type="button"
               id="presetBtnSplit"
               onClick={() => handleSetPreset(50)}
-              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                sliderPosition === 50
-                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
-                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
-              }`}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${sliderPosition === 50
+                ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+                }`}
             >
               <Columns2 className="w-3.5 h-3.5 text-teal shrink-0" />
               <span>50 / 50 Split</span>
@@ -185,11 +172,10 @@ export default function BeforeAfterSlider({
               type="button"
               id="presetBtnAI"
               onClick={() => handleSetPreset(0)}
-              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                sliderPosition === 0
-                  ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
-                  : 'font-medium text-charcoal hover:text-teal hover:bg-white'
-              }`}
+              className={`preset-split-btn px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer ${sliderPosition === 0
+                ? 'font-semibold bg-white text-teal shadow-2xs border border-teal/20'
+                : 'font-medium text-charcoal hover:text-teal hover:bg-white'
+                }`}
             >
               <img
                 src={generatedSrc}
@@ -217,16 +203,6 @@ export default function BeforeAfterSlider({
             </button>
           )}
 
-          {onSave && (
-            <button
-              type="button"
-              onClick={onSave}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal text-white hover:bg-teal-dark font-semibold transition-colors shadow-sm cursor-pointer active:scale-98"
-            >
-              <Bookmark className="w-3.5 h-3.5 text-aqua shrink-0" />
-              <span>Save Design</span>
-            </button>
-          )}
         </div>
       </div>
     </section>

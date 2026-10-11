@@ -12,6 +12,7 @@ export default function AppHeader({
   roomType = 'Living Room',
   style = 'Modern',
   onBackToWorkspace,
+  onNewProject,
   onResetSplit,
 }) {
   const displayRoomType = (roomType && String(roomType).trim()) || 'Living Room';
@@ -27,7 +28,7 @@ export default function AppHeader({
               type="button"
               onClick={onBackToWorkspace}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-charcoal-muted hover:text-teal hover:bg-teal-surface/60 transition-colors cursor-pointer"
-              title="Back to workspace"
+              title="Back to workspace (preserves design)"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -71,6 +72,18 @@ export default function AppHeader({
             >
               <RotateCcw className="w-3 h-3 text-charcoal-light" />
               <span>Reset 50%</span>
+            </button>
+          )}
+
+          {onNewProject && (
+            <button
+              type="button"
+              onClick={onNewProject}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-semibold text-charcoal hover:border-red-400 hover:text-red-600 transition-colors shadow-xs cursor-pointer"
+              title="Start a new project (clears current design & canvas)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>New Project</span>
             </button>
           )}
         </div>
