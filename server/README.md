@@ -55,6 +55,9 @@ server/
 ├── Procfile                  # Production deployment configuration (Render/Heroku)
 ├── requirements.txt          # Python dependencies
 └── test_controlnet.py        # ControlNet connection test script
+
+# Linked GPU Engine:
+# notebooks/sketchspace_engine.ipynb provides the dedicated ControlNet diffusion bridge.
 ```
 
 ---
@@ -222,6 +225,26 @@ Returns starter room sketches (Japandi Bedroom, Nordic Living Room, Industrial K
   ]
 }
 ```
+
+---
+
+## Google Colab GPU Bridge (`notebooks/sketchspace_engine.ipynb`)
+
+Tier 1 photorealistic rendering is powered by the Google Colab notebook located at [`notebooks/sketchspace_engine.ipynb`](../notebooks/sketchspace_engine.ipynb).
+
+### How to Connect:
+1. Open [`notebooks/sketchspace_engine.ipynb`](../notebooks/sketchspace_engine.ipynb) in **Google Colab** with a **GPU runtime** (T4 or higher).
+2. Insert your free **ngrok authtoken** in the notebook cell.
+3. Run all cells: the notebook loads **Realistic Vision V5.1**, **ControlNet Scribble**, and **FT-MSE VAE**, then launches an asynchronous FastAPI service tunneled through ngrok.
+4. Copy the output URL:
+   ```
+   🎯 PUBLIC BRIDGE URL: https://your-ngrok-tunnel-url.ngrok-free.dev
+   ```
+5. Paste it into `server/.env`:
+   ```env
+   COLAB_BRIDGE_URL=https://your-ngrok-tunnel-url.ngrok-free.dev
+   ```
+6. The backend server automatically routes generation and refinement requests to this GPU bridge. If the tunnel is offline or not configured, the server automatically fails over to Tier 2 (Pollinations.ai) and Tier 3 (local caching).
 
 ---
 

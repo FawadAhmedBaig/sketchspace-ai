@@ -97,6 +97,10 @@ sketchspace-ai/
 │   ├── requirements.txt
 │   └── README.md               # Detailed backend documentation
 │
+├── notebooks/                  # Google Colab GPU Engine & Diffusion Bridge
+│   ├── sketchspace_engine.ipynb # ControlNet Scribble + Realistic Vision V5.1 notebook
+│   └── README.md               # Colab GPU setup & ngrok tunnel guide
+│
 └── README.md                   # Project overview and quick start guide
 ```
 
@@ -175,6 +179,21 @@ cd sketchspace-ai
 
 ---
 
+### 4. (Optional) GPU Acceleration via Google Colab (`/notebooks`)
+
+To run Tier 1 photorealistic diffusion with ControlNet and Realistic Vision V5.1 on a free T4 GPU:
+1. Open [`notebooks/sketchspace_engine.ipynb`](notebooks/sketchspace_engine.ipynb) in **Google Colab**.
+2. Select **Runtime** → **Change runtime type** → **T4 GPU**.
+3. Insert your free [ngrok authtoken](https://ngrok.com/) into Cell 2 and run all cells.
+4. Copy the printed public tunnel URL (`https://xxxx.ngrok-free.dev`) into `server/.env`:
+   ```env
+   COLAB_BRIDGE_URL=https://xxxx.ngrok-free.dev
+   ```
+5. Restart or hot-reload your backend. Generative renders will now be synthesized directly on the Colab GPU!
+   > For full setup details and model specifications, see [`notebooks/README.md`](notebooks/README.md).
+
+---
+
 ## 📡 API Endpoints
 
 | Method | Endpoint | Description |
@@ -192,11 +211,14 @@ Interactive API documentation is accessible at [http://localhost:8000/docs](http
 
 - **Frontend**: React 18, Vite 5, Tailwind CSS, Lucide React, HTML5 Canvas API
 - **Backend**: FastAPI, Uvicorn, Pydantic v2, Google GenAI SDK (`google-genai`), Pillow, Requests
+- **GPU Engine & Notebooks**: PyTorch, Hugging Face `diffusers`, `transformers`, `accelerate`, pyngrok
 - **AI Models & Pipeline**:
   - `gemini-2.5-flash` for multimodal spatial layout reasoning
-  - Stable Diffusion + ControlNet for depth/edge-conditioned synthesis
-  - Pollinations.ai for zero-config fallback generation
-- **Deployment**: Render / Railway (Backend) & Vercel / Netlify (Frontend)
+  - `lllyasviel/sd-controlnet-scribble` for strict boundary conditioning
+  - `SG161222/Realistic_Vision_V5.1_noVAE` + `sd-vae-ft-mse` for cutaway & photorealistic interiors
+  - Shared-weight Img2Img pipeline for conversational iterative refinements
+  - Pollinations.ai for zero-config resilient fallback generation
+- **Deployment**: Render / Railway (Backend), Vercel / Netlify (Frontend), Google Colab (GPU Bridge)
 
 ---
 
