@@ -28,16 +28,18 @@ def _build_refine_prompt(instruction: str, room_type: str, style: str) -> str:
 
 @router.post("/api/refine")
 def refine(req: RefineRequest):
+    print(f"[Refine] Received instruction: {req.instruction[:100]}")
     prompt = _build_refine_prompt(
         req.instruction,
         req.room_type or "Bedroom",
         req.style or "Modern",
     )
-    img, used_fallback = shielded_synthesize(prompt, req.previous_image_base64)
-    if used_fallback:
-        return {
-            "status": "demo",
-            "rendered_image_base64": img,
-            "note": "Render service unavailable - serving fallback (demo shield).",
-        }
-    return {"status": "success", "rendered_image_base64": img}
+    img, used_fallback = shielded_synthesize(
+        prompt=prompt, previous_b64=req.previous_image_base64
+    )
+    return {
+        "status": "success",
+        "rendered_image_base64": img,
+        "is_mock": used_fallback,
+    }
+

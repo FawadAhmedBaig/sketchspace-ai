@@ -11,7 +11,7 @@
  * Used by useDesignWorkflow.js for the DesignAndRefineScreen page.
  */
 
-const API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, '');
 const TIMEOUT_MS = 120_000;
 
 /**
@@ -95,7 +95,7 @@ export async function generateDesign({
 
   const data = await apiRequest('/api/generate', body);
 
-  let renderedImage = data.rendered_image_base64;
+  let renderedImage = data.rendered_image_base64 || data.image_url;
   if (!renderedImage) {
     throw new Error('The server did not return a generated image.');
   }
@@ -112,12 +112,14 @@ export async function generateDesign({
  *
  * In demo mode, simulates a 2s delay and returns the same placeholder.
  *
- * @param {{ previousImageBase64: string, instruction: string, isDemoMode?: boolean }} params
+ * @param {{ previousImageBase64: string, instruction: string, roomType?: string, style?: string, isDemoMode?: boolean }} params
  * @returns {Promise<{ renderedImage: string, isMock: boolean }>}
  */
 export async function refineDesign({
   previousImageBase64,
   instruction,
+  roomType = 'Bedroom',
+  style = 'Modern',
   isDemoMode = false,
 }) {
   if (isDemoMode) {
@@ -131,11 +133,13 @@ export async function refineDesign({
   const body = {
     previous_image_base64: previousImageBase64,
     instruction,
+    room_type: roomType,
+    style,
   };
 
   const data = await apiRequest('/api/refine', body);
 
-  let renderedImage = data.rendered_image_base64;
+  let renderedImage = data.rendered_image_base64 || data.image_url;
   if (!renderedImage) {
     throw new Error('The server did not return a refined image.');
   }
@@ -143,7 +147,7 @@ export async function refineDesign({
     renderedImage = `data:image/jpeg;base64,${renderedImage}`;
   }
 
-  return { renderedImage, isMock: false };
+  return { renderedImage, isMock: data.is_mock || false };
 }
 
 // ─── Helpers ───────────────────────────────────────────

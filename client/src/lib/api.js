@@ -11,8 +11,8 @@
  */
 import { parseDataUrl } from './exportImage';
 
-export const API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-// Gemini vision + Pollinations render can take ~60 s, plus a Render cold start.
+export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, '');
+// ControlNet diffusion via Colab can take 20-35s; allow up to 120s total.
 export const GENERATE_TIMEOUT_MS = 120_000;
 export const HEALTH_TIMEOUT_MS = 60_000;
 

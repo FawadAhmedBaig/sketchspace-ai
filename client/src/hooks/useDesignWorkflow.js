@@ -71,13 +71,15 @@ export function useDesignWorkflow(initialConfig = {}) {
   }, []);
 
   // 6. Backend Connectivity
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  // NEVER auto-enable demo mode — generation must always route to the real backend.
+  // isDemoMode is kept as state for UI display only; it is always false.
+  const isDemoMode = false;
   const [isBackendOnline, setIsBackendOnline] = useState(false);
 
   // Request race-condition counter (prevents stale responses from overwriting newer ones)
   const requestIdRef = useRef(0);
 
-  // Check backend health on mount
+  // Check backend health on mount (informational only — does NOT gate generation)
   useEffect(() => {
     let isMounted = true;
 
@@ -85,10 +87,6 @@ export function useDesignWorkflow(initialConfig = {}) {
       const isOnline = await checkBackendHealth();
       if (isMounted) {
         setIsBackendOnline(isOnline);
-        // If live backend is not available, auto-enable Demo Mode
-        if (!isOnline) {
-          setIsDemoMode(true);
-        }
       }
     }
 
@@ -149,7 +147,6 @@ export function useDesignWorkflow(initialConfig = {}) {
     style,
     designPrompt,
     preserveLayout,
-    isDemoMode,
   ]);
 
   /**
@@ -182,6 +179,8 @@ export function useDesignWorkflow(initialConfig = {}) {
       const result = await refineDesign({
         previousImageBase64: currentGeneratedImage,
         instruction: activeInstruction,
+        roomType,
+        style,
         isDemoMode,
       });
 
@@ -214,7 +213,6 @@ export function useDesignWorkflow(initialConfig = {}) {
     isGenerating,
     refinementInstruction,
     currentGeneratedImage,
-    isDemoMode,
     triggerToast,
   ]);
 
