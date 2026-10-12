@@ -221,6 +221,12 @@ Interactive API documentation is accessible at [http://localhost:8000/docs](http
 - **Deployment**: Render / Railway (Backend), Vercel / Netlify (Frontend), Google Colab (GPU Bridge)
 
 ---
+## Contributors
+
+- **Rahma Shahbaz** — Frontend development, specializing in the drawing canvas, workspace layout, image uploads, and sketch presets.
+- **tayyabtalib07** — Frontend development, focusing on design controls, before-and-after comparisons, and interactive refinement.
+- **FawadAhmedBaig** — Backend architecture and AI layout engine, responsible for FastAPI, Gemini Vision, and room generation.
+- **ShahbazAhmadMazari** — Backend refinement and utilities, handling presets, export features, demo preparation, and submission assets.
 
 ## 📄 License
 
